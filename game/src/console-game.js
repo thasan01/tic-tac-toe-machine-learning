@@ -10,7 +10,6 @@ function loadPlayer(type, args = {}) {
   else if (type === "RandomPlayer") Player = require("./player/random-player");
   else throw new Error(`Invalid player type: ${type}`);
 
-  console.log("player args:", args);
   return new Player(args);
 }
 
@@ -22,7 +21,6 @@ let init = {
 
       try {
         let argv = require("minimist")(process.argv.slice(2));
-        console.log("argv: ", argv);
 
         let { player1Type, player2Type, sessionName, outdir } = argv;
         players.push(loadPlayer(player1Type, argv));
