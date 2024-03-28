@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Game</title>
+<link rel="stylesheet" href="game.css">
+
+<script src="./jquery-3.7.1.min.js"></script>
+<script>
+$( document ).ready(function() {
+    
+    $("#btn-start").click(()=>{     
+        $(".game-container").show(); 
+        $(".registeration").hide(); 
+    });
+
+});
+</script>
+
+</head>
+<body>
+
+    <div class="registeration">
+        <div>
+            Select Player 1: 
+            <select name="Player1" id="player1">
+                <optgroup label="Interactive">
+                    <option value="Human">Human</option>
+                </optgroup>
+                <optgroup label="Non-Interactive">
+                    <option value="Random">Random</option>
+                </optgroup>
+            </select> 
+            <br/>
+            
+            Select Player 2:
+            <select name="Player1" id="player1">
+                <optgroup label="Interactive">
+                    <option value="Human">Human</option>
+                </optgroup>
+                <optgroup label="Non-Interactive">
+                    <option value="Random">Random</option>
+                </optgroup>
+            </select> 
+
+        </div>
+        <div><button id="btn-start">Start</button></div>
+    </div>
+
+    <div class="game-container">
+        <div class="board">
+            <div class="cell" name="cell-0" index="0">x</div>
+            <div class="cell" name="cell-1" index="1">x</div>
+            <div class="cell" name="cell-2" index="2">x</div>
+            <div class="cell" name="cell-3" index="3">x</div>
+            <div class="cell" name="cell-4" index="4">x</div>
+            <div class="cell" name="cell-5" index="5">x</div>
+            <div class="cell" name="cell-6" index="6">x</div>
+            <div class="cell" name="cell-7" index="7">x</div>
+            <div class="cell" name="cell-8" index="8">x</div>
+        </div>
+    </div>
+
+    <script src="../build/tic-tac-toe.web.js"></script>
+
+</body>
+</html> 

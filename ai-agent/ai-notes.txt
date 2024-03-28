@@ -1,0 +1,18 @@
+DQL Formula
+q[state,action] = 
+	if new_state is terminal: reward
+	else: reward + discount_factor * max( q[new_state] )
+
+2 Netowrks: Policy Network, Target Network
+
+Steps:
+1. Create Policy Network
+2. Copy Polocy Network into Target Network
+3. Agent navigate the environment: state -> new_state
+4. Encode & pass agent's state into the Policy Network
+5. Take same input and pass into Target Netowrk -> It will return same output as Policy Network
+6. Calculate the QValue using the DQL Formula
+7. Update the Target Network's output with the QValue calculated in Step6 for the given action 
+8. Calculate the loss between Policy & Target Networks' outputs and Optimize the Policy Network (Backpropagation)
+9. Repeat Steps 3 - 8, for each each item in batch
+10. Sync Policy Netowrk with Target Network
