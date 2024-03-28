@@ -15,4 +15,6 @@ To build the project:
 npm run build`
 
 To run the game, run the following command from the root project folder:
-`node ./game/build/tic-tac-toe.console.js --player1Type RandomPlayer --player2Type RandomPlayer --trueRandom --outdir game/build --sessionName train1`
+```
+node ./game/build/tic-tac-toe.console.js --player1Type RandomPlayer --player2Type RandomPlayer --trueRandom --outdir game/build --sessionName train1
+```
