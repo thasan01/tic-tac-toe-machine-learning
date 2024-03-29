@@ -2,7 +2,10 @@ const renderer = require("./renderer/console-renderer");
 const game = require("./game");
 const states = require("./states/game-states");
 const { save } = require("./states/save-result");
-const encoder = require("./bitencoder");
+
+const argv = require("minimist")(process.argv.slice(2));
+const encoder =
+  argv.encoder === "BitEncoder" ? require("./bitencoder") : undefined;
 
 function loadPlayer(type, args = {}) {
   if (type === "HumanConsolePlayer")
@@ -18,17 +21,17 @@ let init = {
     return new Promise(async (resolve, reject) => {
       session.board = new Array(9).fill(0);
       let { players } = session;
+      let { player1Type, player2Type, sessionName, outdir, suppressOutput } =
+        argv;
 
       try {
-        let argv = require("minimist")(process.argv.slice(2));
-
-        let { player1Type, player2Type, sessionName, outdir } = argv;
         players.push(loadPlayer(player1Type, argv));
         players.push(loadPlayer(player2Type, argv));
 
         session.sessionName = sessionName;
         session.outdir = outdir;
         session.activePlayer = 0;
+        session.suppressOutput = suppressOutput;
 
         resolve();
       } catch (err) {

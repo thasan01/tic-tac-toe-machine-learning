@@ -33,13 +33,13 @@ function isEndGame(board) {
 let turn = {
   logic: async ({ renderer, encoder, session }) => {
     return new Promise(async (resolve, reject) => {
-      let { players, activePlayer, board } = session;
+      let { players, activePlayer, board, suppressOutput } = session;
       let player = players[activePlayer];
 
       let options = getOptions(board);
       let choice = null;
 
-      renderer(session);
+      if (!suppressOutput) renderer(session);
 
       //If no option is available, then its a draw
       if (!Array.isArray(options) || !options.length) {
@@ -52,7 +52,6 @@ let turn = {
           choice = await player.choose([...board], options);
           isInvalidValid = validateChoice(board, choice);
 
-          if (!session.history) session.history = [];
           session.history.push({
             player: activePlayer,
             board: encoder.encode(board),
@@ -84,7 +83,7 @@ let turn = {
 
 let end = {
   logic: async ({ renderer, session }) => {
-    renderer(session);
+    if (!session.suppressOutput) renderer(session);
   },
 };
 

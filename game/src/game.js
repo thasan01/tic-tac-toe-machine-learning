@@ -22,6 +22,7 @@ let game = async ({
     currentState,
     board: null,
     players: [],
+    history: [],
   };
 
   while (currentState.transitions) {
