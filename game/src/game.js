@@ -8,7 +8,7 @@ function processTransitions(trans, session) {
   return null;
 }
 
-let defaultEncoder = { encode: (array) => array, decode: (bits) => bits };
+let defaultEncoder = { encode: (array) => [...array], decode: (bits) => bits };
 
 let game = async ({
   renderer,
