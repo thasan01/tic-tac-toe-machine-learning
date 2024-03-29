@@ -10,9 +10,10 @@ There are two types of games: web and console.
 
 The console based game is invoked through NodeJS CLI.
 
-To build the project:
-`cd game
-npm run build`
+To build the games, run the following command from the root project folder:
+```
+npm run build --prefix ./game
+```
 
 To run the game, run the following command from the root project folder:
 ```
