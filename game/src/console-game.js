@@ -21,8 +21,15 @@ let init = {
     return new Promise(async (resolve, reject) => {
       session.board = new Array(9).fill(0);
       let { players } = session;
-      let { player1Type, player2Type, sessionName, outdir, suppressOutput } =
-        argv;
+      let {
+        player1Type,
+        player2Type,
+        sessionName,
+        outdir,
+        suppressOutput,
+        invalidChoiceThreshold = 5,
+        sameInvalidChoiceThreshold = 2,
+      } = argv;
 
       try {
         players.push(loadPlayer(player1Type, argv));
@@ -32,6 +39,8 @@ let init = {
         session.outdir = outdir;
         session.activePlayer = 0;
         session.suppressOutput = suppressOutput;
+        session.invalidChoiceThreshold = invalidChoiceThreshold;
+        session.sameInvalidChoiceThreshold = sameInvalidChoiceThreshold;
 
         resolve();
       } catch (err) {

@@ -1,15 +1,16 @@
 const Player = require("./player");
 
 class RandomPlayer extends Player {
-  constructor({ trueRandom = false } = { trueRandom: false }) {
+  constructor({ trueRandomRate = 0.0 } = { trueRandomRate: 0.0 }) {
     super();
-    this.trueRandom = trueRandom;
+    this.trueRandomRate = trueRandomRate;
   }
 
   choose(board, options) {
-    let len = this.trueRandom ? board.length : options.length;
-    let index = Math.floor(Math.random() * len);
-    return options[index];
+    let rnum = Math.random();
+    return rnum < this.trueRandomRate
+      ? Math.round(rnum * board.length)
+      : options[Math.round(rnum * options.length)];
   }
 }
 

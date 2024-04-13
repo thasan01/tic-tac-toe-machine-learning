@@ -1,5 +1,38 @@
-function validateChoice(board, choice) {
-  return board[choice] != 0;
+function resetInvalidRecord({ player, choice } = { player: -1, choice: -1 }) {
+  return {
+    player,
+    choice,
+    choiceCounter: 0,
+    sameChoiceCounter: 0,
+    disqualified: false,
+  };
+}
+
+function validateChoice(board, choice, session) {
+  let invalid = board[choice] != 0;
+  if (invalid) {
+    const { invalidChoiceThreshold, sameInvalidChoiceThreshold } = session;
+    let player = session.activePlayer;
+    let rec = session.invalidRecord;
+
+    //If invalid record is not defined or a different player made an invalid choice
+    //then create a new record for the player / choice
+    if (!rec || rec.player !== player) {
+      session.invalidRecord = resetInvalidRecord({ player, choice });
+    }
+    //
+    if (rec.choice === choice) rec.sameChoiceCounter++;
+
+    rec.choiceCounter++;
+
+    if (
+      rec.choiceCounter >= invalidChoiceThreshold ||
+      rec.sameChoiceCounter >= sameInvalidChoiceThreshold
+    )
+      rec.disqualified = true;
+  }
+
+  return invalid;
 }
 
 function getOptions(board) {
@@ -47,18 +80,26 @@ let turn = {
         session.status = `Game is draw!`;
         resolve();
       } else {
-        let isInvalidValid = false;
+        session.invalidRecord = resetInvalidRecord();
+        let isInvalid = false;
         do {
           choice = await player.choose([...board], options);
-          isInvalidValid = validateChoice(board, choice);
+          isInvalid = validateChoice(board, choice, session);
+
+          if (session.invalidRecord.disqualified) {
+            session.status = `Player[${activePlayer}] disqualified!`;
+            session.winner = null;
+            session.gameover = true;
+            return resolve();
+          }
 
           session.history.push({
             player: activePlayer,
             board: encoder.encode(board),
             choice,
-            isValid: !isInvalidValid,
+            isValid: !isInvalid,
           });
-        } while (isInvalidValid);
+        } while (isInvalid);
 
         //commit the choice
         let playerId = activePlayer + 1;

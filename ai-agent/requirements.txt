@@ -3,3 +3,5 @@ numpy==1.26.3
 pandas==2.2.1
 torch==2.2.1+cu121
 matplotlib==3.8.3
+pythonmonkey~=0.3.0
+Flask~=3.0.2
