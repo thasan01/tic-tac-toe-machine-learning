@@ -61,17 +61,10 @@ Following are list of input arguments passed into the game.
   </tr>
 
   <tr>
-    <td>outdir</td>
-    <td>The file path (relative or absolute) where to game result is saved. If `outdir` is provided, then `sessionName` must also be provided. <br/> Output file = ${outdir}/${sessionName}.txt</td>
+    <td>trueRandomRate</td>
+    <td>The default behavior for a Random Player Agent is to select an option from the remaining available options provided by the game. If this parameter provides a chance for the agent to select a random option from the board instead. In other words, this flag will enable the agent to make invalid moves. This is used to punish the AI agent during the training process. If this parameter is not provided, the default value is 0.</td>
     <td>No</td>
-    <td>*</td>    
-  </tr>
-
-  <tr>
-    <td>trueRandom</td>
-    <td>The default behavior for a Random Player Agent is to select an option from the remaining available options provided by the game. If this flag is provided, the agent will select a random option from the board instead. In other words, this flag will enable the agent to make invalid moves. This is used to punish the AI agent during the training process. </td>
-    <td>No</td>
-    <td>N/A</td>          
+    <td>Float number between 0 and 1</td>          
   </tr>
 
   <tr>
@@ -79,6 +72,20 @@ Following are list of input arguments passed into the game.
     <td>If this flag is provided, the game will not call the renderer class, to output the state of the board per turn. This is used during the training process to reduce I/O overhead and increase performance.</td>
     <td>No</td>
     <td>N/A</td>          
+  </tr>
+
+  <tr>
+    <td>invalidChoiceThreshold</td>
+    <td>Number of times an agent can make an invalid value before being disqualified. The default value is 5.</td>
+    <td>No</td>
+    <td>Integer</td>          
+  </tr>
+
+  <tr>
+    <td>sameInvalidChoiceThreshold</td>
+    <td>Number of times an agent can the same invalid value before being disqualified. The default value is 2.</td>
+    <td>No</td>
+    <td>Integer</td>          
   </tr>
 
 </table>
