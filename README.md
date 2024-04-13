@@ -17,7 +17,7 @@ npm run build --prefix ./game
 
 To run the game, run the following command from the root project folder:
 ```
-node ./game/build/tic-tac-toe.console.js --player1Type RandomPlayer --player2Type RandomPlayer --trueRandom --outdir game/build --sessionName train1
+node ./game/build/tic-tac-toe.console.js --player1Type RandomPlayer --player2Type RandomPlayer --trueRandomRate 0.25 --outdir game/build --sessionName train1
 ```
 
 ## Input Arguments
@@ -58,6 +58,13 @@ Following are list of input arguments passed into the game.
     <td>The file path (relative or absolute) where to game result is saved. If `outdir` is provided, then `sessionName` must also be provided. <br/> Output file = ${outdir}/${sessionName}.txt</td>
     <td>No</td>
     <td>*</td>
+  </tr>
+
+  <tr>
+    <td>encoder</td>
+    <td>This param specifies whether to encode the game board state.</td>
+    <td>No</td>
+    <td><ul><li>BitEncoder</li></ul></td>
   </tr>
 
   <tr>
