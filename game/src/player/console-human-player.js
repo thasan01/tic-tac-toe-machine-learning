@@ -3,6 +3,11 @@ const Player = require("./player");
 
 class ConsoleHumanPlayer extends Player {
   //
+  async register() {
+    return true;
+  }
+
+  //
   async choose(board, options) {
     const response = await prompts({
       type: "number",

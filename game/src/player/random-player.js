@@ -6,6 +6,10 @@ class RandomPlayer extends Player {
     this.trueRandomRate = trueRandomRate;
   }
 
+  register() {
+    return true;
+  }
+
   choose(board, options) {
     let rnum = Math.random();
     return rnum < this.trueRandomRate

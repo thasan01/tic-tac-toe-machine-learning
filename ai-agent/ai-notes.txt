@@ -14,5 +14,5 @@ Steps:
 6. Calculate the QValue using the DQL Formula
 7. Update the Target Network's output with the QValue calculated in Step6 for the given action 
 8. Calculate the loss between Policy & Target Networks' outputs and Optimize the Policy Network (Backpropagation)
-9. Repeat Steps 3 - 8, for each each item in batch
+9. Repeat Steps 3 - 8, for each item in batch
 10. Sync Policy Netowrk with Target Network

@@ -7,13 +7,26 @@ const argv = require("minimist")(process.argv.slice(2));
 const encoder =
   argv.encoder === "BitEncoder" ? require("./bitencoder") : undefined;
 
-function loadPlayer(type, args = {}) {
+let config = {};
+if (argv.configDir) {
+  process.env["NODE_CONFIG_DIR"] = argv.configDir;
+  config = require("config");
+}
+let inputArgs = { ...config, ...argv };
+
+function loadPlayer(type, args, playerId) {
   if (type === "HumanConsolePlayer")
+    //
     Player = require("./player/console-human-player");
-  else if (type === "RandomPlayer") Player = require("./player/random-player");
+  else if (type === "RandomPlayer")
+    //
+    Player = require("./player/random-player");
+  else if (type === "RLWebAgentPlayer")
+    //
+    Player = require("./player/web-player");
   else throw new Error(`Invalid player type: ${type}`);
 
-  return new Player(args);
+  return new Player(args, playerId);
 }
 
 let init = {
@@ -29,11 +42,14 @@ let init = {
         suppressOutput,
         invalidChoiceThreshold = 5,
         sameInvalidChoiceThreshold = 2,
-      } = argv;
+      } = inputArgs;
 
       try {
-        players.push(loadPlayer(player1Type, argv));
-        players.push(loadPlayer(player2Type, argv));
+        players.push(loadPlayer(player1Type, inputArgs, 1));
+        players.push(loadPlayer(player2Type, inputArgs, 2));
+
+        players[0].register();
+        players[1].register();
 
         session.sessionName = sessionName;
         session.outdir = outdir;

@@ -1,0 +1,8 @@
+{
+    "trueRandomRate" : 0.25,
+    "profiles" : {
+        "rl-agent-1" : {
+            "baseUrl" : "http://127.0.0.1:5000"
+        }
+    }
+}

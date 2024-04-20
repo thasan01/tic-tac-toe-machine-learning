@@ -68,6 +68,7 @@ let turn = {
     return new Promise(async (resolve, reject) => {
       let { players, activePlayer, board, suppressOutput } = session;
       let player = players[activePlayer];
+      let playerId = activePlayer + 1;
 
       let options = getOptions(board);
       let choice = null;
@@ -87,14 +88,14 @@ let turn = {
           isInvalid = validateChoice(board, choice, session);
 
           if (session.invalidRecord.disqualified) {
-            session.status = `Player[${activePlayer}] disqualified!`;
+            session.status = `Player${playerId} disqualified!`;
             session.winner = null;
             session.gameover = true;
             return resolve();
           }
 
           session.history.push({
-            player: activePlayer,
+            player: playerId,
             board: encoder.encode(board),
             choice,
             isValid: !isInvalid,
@@ -102,14 +103,13 @@ let turn = {
         } while (isInvalid);
 
         //commit the choice
-        let playerId = activePlayer + 1;
         session.board[choice] = playerId;
         session.activePlayer = playerId % players.length;
         session.gameover = isEndGame(board);
 
         if (session.gameover) {
-          session.status = `Player[${playerId}] won!`;
-          session.winner = activePlayer;
+          session.status = `Player${playerId} won!`;
+          session.winner = playerId;
         }
 
         resolve();
