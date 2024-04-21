@@ -24,6 +24,7 @@ class WebPlayer extends Player {
 
     this.playerId = playerId;
     this.baseUrl = profile.baseUrl;
+    this.explorationRate = args.explorationRate;
   }
 
   async register() {
@@ -36,6 +37,8 @@ class WebPlayer extends Player {
     let requestPayload = {
       playerId: this.playerId,
       board,
+      options,
+      explorationRate: this.explorationRate,
     };
 
     const response = await fetch(`${this.baseUrl}${choiceUrl}`, {
@@ -43,8 +46,8 @@ class WebPlayer extends Player {
       headers: jsonHeaders,
       body: JSON.stringify(requestPayload),
     });
+
     let body = await response.json();
-    console.log("API response: ", body);
     return body.choice;
   }
 }
