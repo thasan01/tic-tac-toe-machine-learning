@@ -14,8 +14,8 @@ import os
 api_base_url = "http://127.0.0.1:5000"
 out_dir = "./data/training"
 session_template = "training-{:06d}-{:06d}"
-max_epochs = 100
-max_sessions = 10
+max_epochs = 9999999
+max_sessions = 100
 
 delete_training_files = True
 # player_server_script = "player-server.py"
@@ -63,7 +63,7 @@ def run_games(epoch, out_dir, exploration_rate):
                         "--configDir", "../game/config",
                         "--outdir", out_dir,
                         "--sessionName", session,
-                        "--encoder", "BitEncoder",
+                        # "--encoder", "BitEncoder",
                         "--explorationRate", f"{exploration_rate}"
                         ])
 
@@ -71,8 +71,6 @@ def run_games(epoch, out_dir, exploration_rate):
 def calculate_reward(action, player, winner, turns_left):
     if not action["isValid"]:
         return -10
-
-    print(f"winner: {winner}, player: {player}, is_winner: {winner == player}, turns_left: {turns_left}")
 
     if player == winner and turns_left == 1:
         return 1
@@ -171,21 +169,25 @@ def make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discou
     return train_step
 
 
-def create_list(js_proxy_list):
-    ls = []
+def create_list(pylist, js_proxy_list):
+    pylist *= 0
     for i in js_proxy_list:
-        ls.append(i)
-    return ls
+        pylist.append(i)
+    return
 
 
 def train(model, step, memories, decoder=None, board_size=0):
     model.train()
+    decoded_state = []
+    decoded_next_state = []
     for action in memories:
         player, state = action[0]
-        decoded_state = create_list(decoder.decode(state, board_size))
-        decoded_state.append(player)
+        # state.append(player)
 
-        feature = torch.tensor(decoded_state, dtype=torch.float)
+        # create_list(decoded_state, decoder.decode(state, board_size))
+        # decoded_state.append(player)
+
+        feature = torch.tensor(state+[player], dtype=torch.float)
         label = action[1]
 
         reward = action[2]
@@ -194,9 +196,11 @@ def train(model, step, memories, decoder=None, board_size=0):
         next_input = None
         if next_state is not None:
             next_player, next_board = next_state
-            next_board = create_list(decoder.decode(next_board, board_size))
-            next_board.append(next_player)
-            next_input = torch.tensor(next_board)
+            # next_board.append(next_player)
+
+            # create_list(decoded_next_state, decoder.decode(next_board, board_size))
+            # decoded_next_state.append(next_player)
+            next_input = torch.tensor(next_board+[next_player], dtype=torch.float)
 
         loss = step(input=feature, label=label, reward=reward, next_input=next_input)
         print(f"loss: {loss}")
