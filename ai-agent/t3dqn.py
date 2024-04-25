@@ -12,10 +12,16 @@ class Model(nn.Module):
         super().__init__()
         # fully connected network
         self.fc1 = nn.Linear(input_nodes, hidden_layer1_nodes)
+        self.fc2 = nn.Linear(hidden_layer1_nodes, hidden_layer1_nodes)
+        self.fc3 = nn.Linear(hidden_layer1_nodes, hidden_layer1_nodes)
+        self.fc4 = nn.Linear(hidden_layer1_nodes, hidden_layer1_nodes)
         self.out = nn.Linear(hidden_layer1_nodes, output_nodes)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))  # Apply rectified linear unit (ReLU) activation
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))  # Apply rectified linear unit (ReLU) activation
         x = self.out(x)  # Calculate output
         return x
 
