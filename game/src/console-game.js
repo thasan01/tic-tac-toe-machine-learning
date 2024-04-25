@@ -4,8 +4,16 @@ const states = require("./states/game-states");
 const { save } = require("./states/save-result");
 
 const argv = require("minimist")(process.argv.slice(2));
-const encoder =
-  argv.encoder === "BitEncoder" ? require("./bitencoder") : undefined;
+
+let encoder = undefined;
+switch (argv.encoder) {
+  case "BitEncoder":
+    encoder = require("./bitencoder");
+    break;
+  case "OneHotEncoder":
+    encoder = require("./onehotencoder");
+    break;
+}
 
 let config = {};
 if (argv.configDir) {
