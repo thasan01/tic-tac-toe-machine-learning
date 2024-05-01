@@ -7,16 +7,16 @@ import json
 import torch
 import torch.optim as optim
 from torch import nn
-import pythonmonkey as pm
 import glob
 import os
 import t3dqn as t3
 import t3stats
+from randomutil import Random
 
 api_base_url = "http://127.0.0.1:5000"
 out_dir = "./data/training"
 session_template = "training-{:06d}-{:06d}"
-max_epochs = 500
+max_epochs = 100
 max_sessions = 100
 
 delete_training_files = True
@@ -58,15 +58,18 @@ def run_games(epoch, out_dir, exploration_rate):
     for i in range(max_sessions):
         session = session_template.format(epoch, i)
         subprocess.run(["node", "../game/build/tic-tac-toe.console.js",
+                        # "--player1Type", "RandomPlayer",
                         "--player1Type", "RLWebAgentPlayer",
+                        # "--player2Type", "RLWebAgentPlayer",
                         "--player2Type", "RandomPlayer",
                         "--player1Profile", "rl-agent-1",
-                        "--trueRandomRate", "0.5",
+                        # "--player2Profile", "rl-agent-1",
+                        "--trueRandomRate", "1.0",
                         "--suppressOutput",
                         "--configDir", "../game/config",
                         "--outdir", out_dir,
                         "--sessionName", session,
-                        # "--encoder", "BitEncoder",
+                        "--encoder", "OneHotEncoder",
                         "--explorationRate", f"{exploration_rate}"
                         ])
 
@@ -97,6 +100,12 @@ def calculate_session_stats(stats, winner, status_msg):
     elif winner == 2:
         stats["p2_wins"] += 1
     return
+
+
+def onehot_encode_state(action):
+    onehot_player = [0, 0, 0]
+    onehot_player[action["player"]] = 1
+    return action["board"] + onehot_player
 
 
 def create_memories(memories, epoch, in_dir):
@@ -130,12 +139,12 @@ def create_memories(memories, epoch, in_dir):
                 turns_left = max_turns - curr_turn
                 reward = calculate_reward(action, action["player"], winner, turns_left)
 
-                state = [action["player"], action["board"]]
+                state = [onehot_encode_state(action), action["options"]]
                 choice = action["choice"]
 
                 if turns_left > 1:
                     next_action = valid_moves[curr_turn + 1]
-                    next_state = [next_action["player"], next_action["board"]]
+                    next_state = [onehot_encode_state(next_action), next_action["options"]]
                 else:
                     next_state = None
                 memories.append([state, choice, reward, next_state])
@@ -145,7 +154,9 @@ def create_memories(memories, epoch, in_dir):
                 if "choice" not in action:
                     continue
 
-                state = [action["player"], action["board"]]
+                onehot_player = [0, 0, 0]
+                onehot_player[action["player"]] = 1
+                state = [action["board"] + onehot_player, action["options"]]
                 choice = action["choice"]
                 reward = -10
                 memories.append([state, choice, reward, None])
@@ -153,11 +164,15 @@ def create_memories(memories, epoch, in_dir):
 
 
 def make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discount_rate):
-    def train_step(input, label, reward, next_input):
+    output_space = set(range(9))
+
+    def train_step(feature, label, reward, next_input):
 
         # Sets model to TRAIN mode
         target_dqn.eval()
         policy_dqn.train()
+
+        x, options = feature
 
         # Calculate Q Value
         if next_input is None:
@@ -167,14 +182,18 @@ def make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discou
                 # next state's reward is subtracted from current state instead of added
                 # because next state is the other player's turn. Therefore, if the other
                 # player made a successful move, then that is bad for the current player
-                q_value = reward - (discount_rate * target_dqn(next_input).max())
+                next_x, next_options = next_input
+                q_value = reward - (discount_rate * target_dqn(next_x).max())
 
         # Makes predictions
-        y = policy_dqn(input)
-        yhat = target_dqn(input)
+        y = policy_dqn(x)
+        yhat = target_dqn(x)
 
         # Update target_dqn output with q_value
+        yhat = yhat.clone()
         yhat[label] = q_value.item()
+        for i in (output_space - set(options)):
+            yhat[i] = -10
 
         # Computes loss
         loss = loss_fn(y, yhat)
@@ -193,19 +212,13 @@ def make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discou
     return train_step
 
 
-def create_list(pylist, js_proxy_list):
-    pylist *= 0
-    for i in js_proxy_list:
-        pylist.append(i)
-    return
-
-
-def train(model, step, memories, decoder=None, board_size=0):
+def train(model, step, memories):
     model.train()
     losses = []
-    for action in memories:
-        player, state = action[0]
-        feature = torch.tensor(state + [player], dtype=torch.float)
+    for action in reversed(memories):
+        state, options = action[0]
+        feature = [torch.tensor(state, dtype=torch.float), options]
+        # feature = torch.tensor(state, dtype=torch.float)
         label = action[1]
 
         reward = action[2]
@@ -213,14 +226,14 @@ def train(model, step, memories, decoder=None, board_size=0):
         next_state = action[3]
         next_input = None
         if next_state is not None:
-            next_player, next_board = next_state
-            next_input = torch.tensor(next_board + [next_player], dtype=torch.float)
+            next_state, next_choice = next_state
+            next_input = [torch.tensor(next_state, dtype=torch.float), next_choice]
 
-        loss = step(input=feature, label=label, reward=reward, next_input=next_input)
+        loss = step(feature=feature, label=label, reward=reward, next_input=next_input)
         losses.append(loss)
-        print(f"loss: {loss}")
+        # print(f"loss: {loss}")
 
-    print(f"")
+    # print(f"")
     return losses
 
 
@@ -231,21 +244,21 @@ def cleanup_files(file_dir, pattern):
 
 
 def app():
-    discovery_rate = 1.0
-    decay_rate = 0.99
+    discovery_rate = 0.0
+    decay_rate = 0.95
 
     learn_rate = 0.01
     discount_rate = 0.9
-    policy_dqn = t3.get_model(filename=model_filename)
 
-    target_dqn = t3.get_model()
+    seed = 0
+    random = Random(seed)
+    model_args = {"random": random}
+    policy_dqn = t3.get_model(filename=model_filename, input_args=model_args)
+    target_dqn = t3.get_model(filename=None, input_args=model_args)
 
-    loss_fn = nn.MSELoss()
+    loss_fn = nn.MSELoss()  # nn.CrossEntropyLoss()  #
     optimizer = optim.Adam(policy_dqn.parameters(), lr=learn_rate)
     train_step = make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discount_rate)
-
-    board_size = 9
-    encoder = pm.require("../game/src/bitencoder.js")
 
     wait_for_server(api_base_url)
     memories = []
@@ -260,7 +273,7 @@ def app():
         epoch_stats["exploration_rate"] = discovery_rate
         print(f"memories={memories}")
 
-        losses = train(model=policy_dqn, step=train_step, memories=memories, decoder=encoder, board_size=board_size)
+        losses = train(model=policy_dqn, step=train_step, memories=memories)
         epoch_stats["avg_loss"] = mean(losses)
 
         t3.save_model(policy_dqn, filename=model_filename, archive=False)
@@ -271,7 +284,6 @@ def app():
 
         reload_model(api_base_url)
         discovery_rate = discovery_rate * decay_rate
-
 
 # =========================
 # Entry Point

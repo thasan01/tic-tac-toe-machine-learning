@@ -98,6 +98,7 @@ let turn = {
             player: playerId,
             board: encoder.encode(board),
             choice,
+            options,
             isValid: !isInvalid,
           });
         } while (isInvalid);

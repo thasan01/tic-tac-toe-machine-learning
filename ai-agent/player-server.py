@@ -3,6 +3,7 @@ import json
 import random
 import torch
 import t3dqn as t3
+from t3encoder import encode
 import logging
 
 log = logging.getLogger('werkzeug')
@@ -19,22 +20,12 @@ class Agent:
         self.model.eval()
 
     def decide(self, state, exploration_rate, options):
-        if exploration_rate is not None and random.random() < exploration_rate:
-            # select random action
-            return options[random.randrange(len(options))]
-        else:
-            with torch.no_grad():
-                x = torch.FloatTensor(state)
-                return torch.argmax(self.model.forward(x)).item()
+        return self.model.predict(state, exploration_rate, options)
 
 
 agent = Agent()
 agent.reload()
 app = Flask(__name__)  # Flask constructor
-
-
-def predict(state, exploration_rate, options):
-    return agent.decide(state, exploration_rate, options)
 
 
 # A decorator used to tell the application
@@ -59,9 +50,8 @@ def player_choice():
 
     player_id = req_payload.get('playerId')
     board = req_payload.get('board')
-    board.append(player_id)
 
-    choice = predict(board, exploration_rate, options)
+    choice = agent.decide(state=encode(board, player_id), exploration_rate=exploration_rate, options=options)
     return {"choice": choice, "playerId": player_id}
 
 

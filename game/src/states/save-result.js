@@ -15,15 +15,11 @@ let save = {
       let filename = `${outdir}/${sessionName}.txt`;
 
       try {
-        let allValidMoves = session.history.filter((e) => e.isValid);
-        let p1 = allValidMoves.filter((e) => e.player === 0).length;
-        let p2 = allValidMoves.filter((e) => e.player === 1).length;
 
         let content = {
           winner: session.winner,
           status: session.status,
-          history: session.history,
-          validMoves: [p1, p2],
+          history: session.history
         };
         fs.writeFileSync(filename, JSON.stringify(content));
       } catch (err) {
