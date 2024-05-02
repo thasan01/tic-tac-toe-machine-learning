@@ -41,14 +41,21 @@ Following are list of input arguments can be passed into the game.
   </tr>
 
   <tr>
-    <td>player1Type</td>
-    <td>Specifies the type of player for Player 1</td>
+    <td>player{n}Type: <br/>Ex: player1Type, player2Type</td>
+    <td>Specifies the type of player for the Player</td>
     <td>Yes</td>
     <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLWebAgentPlayer</li> </ul></td>
   </tr>
 
   <tr>
-    <td>player2Type</td>
+    <td>player{n}Profile: <br/>Ex: player1Profile, player1Profile</td>
+    <td>Specifies the entry key for the player profile in the config file. The profile contains player specific properties, like API URL for RLWebAgentPlayer.</td>
+    <td>Yes</td>
+    <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLWebAgentPlayer</li> </ul></td>
+  </tr>
+
+  <tr>
+    <td></td>
     <td>Specifies the type of player for Player 2</td>
     <td>Yes</td>
     <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLWebAgentPlayer</li> </ul></td>
