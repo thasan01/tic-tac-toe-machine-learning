@@ -17,6 +17,7 @@ npm run build --prefix ./game
 ```
 
 To run the game, run the following command from the root project folder.
+
 For an AI agent vs Random agent: 
 ```
 node ./game/build/tic-tac-toe.console.js --player1Type RLWebAgentPlayer --player1Profile rl-agent-1 --explorationRate 0.0 --player2Type RandomPlayer --trueRandomRate 0.25 --sessionName game1 --configDir game/config
@@ -50,13 +51,6 @@ Following are list of input arguments can be passed into the game.
   <tr>
     <td>player{n}Profile: <br/>Ex: player1Profile, player1Profile</td>
     <td>Specifies the entry key for the player profile in the config file. The profile contains player specific properties, like API URL for RLWebAgentPlayer.</td>
-    <td>Yes</td>
-    <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLWebAgentPlayer</li> </ul></td>
-  </tr>
-
-  <tr>
-    <td></td>
-    <td>Specifies the type of player for Player 2</td>
     <td>Yes</td>
     <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLWebAgentPlayer</li> </ul></td>
   </tr>
