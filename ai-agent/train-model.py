@@ -192,6 +192,7 @@ def make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discou
         # Update target_dqn output with q_value
         yhat = yhat.clone()
         yhat[label] = q_value.item()
+        # For all invalid options, set reward to -10
         for i in (output_space - set(options)):
             yhat[i] = -10
 
@@ -231,9 +232,7 @@ def train(model, step, memories):
 
         loss = step(feature=feature, label=label, reward=reward, next_input=next_input)
         losses.append(loss)
-        # print(f"loss: {loss}")
 
-    # print(f"")
     return losses
 
 
@@ -256,7 +255,7 @@ def app():
     policy_dqn = t3.get_model(filename=model_filename, input_args=model_args)
     target_dqn = t3.get_model(filename=None, input_args=model_args)
 
-    loss_fn = nn.MSELoss()  # nn.CrossEntropyLoss()  #
+    loss_fn = nn.MSELoss()
     optimizer = optim.Adam(policy_dqn.parameters(), lr=learn_rate)
     train_step = make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discount_rate)
 
@@ -271,7 +270,6 @@ def app():
         memories *= 0
         epoch_stats = create_memories(memories, epoch, out_dir)
         epoch_stats["exploration_rate"] = discovery_rate
-        print(f"memories={memories}")
 
         losses = train(model=policy_dqn, step=train_step, memories=memories)
         epoch_stats["avg_loss"] = mean(losses)
