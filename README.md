@@ -4,7 +4,7 @@ This repository contains Javascript implementation of Tic Tac Toe game that leve
 
 # The Game
 
-There are two types of games: web and console.
+There are two types of games: web and console. The web game is not been implemented yet.
 
 ## Console Game
 
@@ -28,7 +28,6 @@ node ./game/build/tic-tac-toe.console.js --player1Type RLWebAgentPlayer --player
 ```
 
 
-
 ## Input Arguments
 
 Following are list of input arguments can be passed into the game.
@@ -45,14 +44,14 @@ Following are list of input arguments can be passed into the game.
     <td>player1Type</td>
     <td>Specifies the type of player for Player 1</td>
     <td>Yes</td>
-    <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLAgent1Player</li> </ul></td>
+    <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLWebAgentPlayer</li> </ul></td>
   </tr>
 
   <tr>
     <td>player2Type</td>
     <td>Specifies the type of player for Player 2</td>
     <td>Yes</td>
-    <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLAgent1Player</li> </ul></td>
+    <td><ul> <li>HumanConsolePlayer</li> <li>HumanWebPlayer</li> <li>RandomPlayer</li> <li>RLWebAgentPlayer</li> </ul></td>
   </tr>
 
   <tr>
@@ -80,7 +79,7 @@ Following are list of input arguments can be passed into the game.
     <td>encoder</td>
     <td>This param specifies whether to encode the game board state.</td>
     <td>No</td>
-    <td><ul><li>BitEncoder</li></ul></td>
+    <td><ul><li>None</li><li>BitEncoder</li><li>OneHotEncoder</li></ul></td>
   </tr>
 
   <tr>
