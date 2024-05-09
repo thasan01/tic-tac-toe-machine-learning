@@ -64,7 +64,7 @@ def run_games(epoch, out_dir, exploration_rate):
                         "--player2Type", "RandomPlayer",
                         "--player1Profile", "rl-agent-1",
                         # "--player2Profile", "rl-agent-1",
-                        "--trueRandomRate", "1.0",
+                        # "--trueRandomRate", "1.0",
                         "--suppressOutput",
                         "--configDir", "../game/config",
                         "--outdir", out_dir,
