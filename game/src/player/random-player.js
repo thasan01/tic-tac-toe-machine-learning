@@ -13,8 +13,8 @@ class RandomPlayer extends Player {
   choose(board, options) {
     let rnum = Math.random();
     return rnum < this.trueRandomRate
-      ? Math.round(rnum * board.length)
-      : options[Math.round(rnum * options.length)];
+      ? Math.floor(rnum * board.length)
+      : options[Math.floor(rnum * options.length)];
   }
 }
 
