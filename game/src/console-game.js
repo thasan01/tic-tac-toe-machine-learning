@@ -32,6 +32,9 @@ function loadPlayer(type, args, playerId) {
   else if (type === "RLWebAgentPlayer")
     //
     Player = require("./player/web-player");
+  else if(type == "HeuristicPlayer")
+    //
+    Player = require("./player/heuristic-player");
   else throw new Error(`Invalid player type: ${type}`);
 
   return new Player(args, playerId);
