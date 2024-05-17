@@ -37,4 +37,4 @@ To train the model, active the venv and run the following command:
 python train-model.py
 ```
 
-Alternatively, download the [pretrained model file](https://github.com/thasan01/tic-tac-toe-machine-learning/releases/download/1.0/t3-trained-model.zip) and place it in the location: **ai-agent/data/model**
+Alternatively, download the latest [pretrained model file]([https://github.com/thasan01/tic-tac-toe-machine-learning/releases/download/1.0/t3-trained-model.zip](https://github.com/thasan01/tic-tac-toe-machine-learning/releases/download/1.0/t3-trained-model-v0.2.zip)) and place it in the location: **ai-agent/data/model**
