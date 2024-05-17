@@ -16,7 +16,7 @@ from randomutil import Random
 api_base_url = "http://127.0.0.1:5000"
 out_dir = "./data/training"
 session_template = "training-{:06d}-{:06d}"
-max_epochs = 100
+max_epochs = 400
 max_sessions = 100
 
 delete_training_files = True
@@ -24,6 +24,11 @@ delete_training_files = True
 player_server_script = "no-server.py"
 model_filename = "./data/model/t3-simple1.pt"
 stats_filename = "./data/model/t3-stats.dat"
+
+good_move_score = 1
+bad_move_score = -1
+invalid_move_score = -5
+default_move_score = -0.1
 
 
 def wait_for_server(base_url):
@@ -64,7 +69,7 @@ def run_games(epoch, out_dir, exploration_rate):
                         "--player2Type", "RandomPlayer",
                         "--player1Profile", "rl-agent-1",
                         # "--player2Profile", "rl-agent-1",
-                        # "--trueRandomRate", "1.0",
+                        "--trueRandomRate", "0.0",
                         "--suppressOutput",
                         "--configDir", "../game/config",
                         "--outdir", out_dir,
@@ -72,18 +77,6 @@ def run_games(epoch, out_dir, exploration_rate):
                         "--encoder", "OneHotEncoder",
                         "--explorationRate", f"{exploration_rate}"
                         ])
-
-
-def calculate_reward(action, player, winner, turns_left):
-    if not action["isValid"]:
-        return -10
-
-    if player == winner and turns_left == 1:
-        return 1
-    elif winner is not None and player != winner and turns_left == 2:
-        return -1
-
-    return 0
 
 
 def calculate_session_stats(stats, winner, status_msg):
@@ -108,6 +101,35 @@ def onehot_encode_state(action):
     return action["board"] + onehot_player
 
 
+def process_player_move(memories, is_winner, player_moves):
+    num_moves = len(player_moves)
+    for curr_turn, action in enumerate(player_moves):
+        # error check
+        if "choice" not in action:
+            return
+
+        state = [onehot_encode_state(action), action["options"]]
+        choice = action["choice"]
+
+        reward = default_move_score
+        next_state = None
+
+        # calculate_reward logic
+        if not action["isValid"]:
+            reward = invalid_move_score
+        elif curr_turn + 1 >= num_moves:
+            if is_winner:
+                reward = good_move_score
+            else:
+                reward = bad_move_score
+        else:
+            next_action = player_moves[curr_turn + 1]
+            next_state = [onehot_encode_state(next_action), next_action["options"]]
+
+        memories.append([state, choice, reward, next_state])
+    return
+
+
 def create_memories(memories, epoch, in_dir):
     # memory is a list of [state, action, reward, next_state]
 
@@ -127,27 +149,13 @@ def create_memories(memories, epoch, in_dir):
             calculate_session_stats(epoch_stats, winner, parsed_json['status'])
 
             history = parsed_json['history']
-            valid_moves = list(filter(lambda turn: turn["isValid"], history))
             invalid_moves = list(filter(lambda turn: not turn["isValid"], history))
+            valid_moves = list(filter(lambda turn: turn["isValid"], history))
+            p1_moves = list(filter(lambda turn: turn["player"] == 1, valid_moves))
+            p2_moves = list(filter(lambda turn: turn["player"] == 2, valid_moves))
 
-            max_turns = len(valid_moves)
-            for curr_turn, action in enumerate(valid_moves):
-
-                if "choice" not in action:
-                    continue
-
-                turns_left = max_turns - curr_turn
-                reward = calculate_reward(action, action["player"], winner, turns_left)
-
-                state = [onehot_encode_state(action), action["options"]]
-                choice = action["choice"]
-
-                if turns_left > 1:
-                    next_action = valid_moves[curr_turn + 1]
-                    next_state = [onehot_encode_state(next_action), next_action["options"]]
-                else:
-                    next_state = None
-                memories.append([state, choice, reward, next_state])
+            process_player_move(memories, (winner == 1), p1_moves)
+            process_player_move(memories, (winner == 2), p2_moves)
 
             for action in invalid_moves:
 
@@ -158,8 +166,9 @@ def create_memories(memories, epoch, in_dir):
                 onehot_player[action["player"]] = 1
                 state = [action["board"] + onehot_player, action["options"]]
                 choice = action["choice"]
-                reward = -10
+                reward = invalid_move_score
                 memories.append([state, choice, reward, None])
+
     return epoch_stats
 
 
@@ -183,7 +192,7 @@ def make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discou
                 # because next state is the other player's turn. Therefore, if the other
                 # player made a successful move, then that is bad for the current player
                 next_x, next_options = next_input
-                q_value = reward - (discount_rate * target_dqn(next_x).max())
+                q_value = reward + (discount_rate * target_dqn(next_x).max())
 
         # Makes predictions
         y = policy_dqn(x)
@@ -194,7 +203,7 @@ def make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discou
         yhat[label] = q_value.item()
         # For all invalid options, set reward to -10
         for i in (output_space - set(options)):
-            yhat[i] = -10
+            yhat[i] = invalid_move_score
 
         # Computes loss
         loss = loss_fn(y, yhat)
@@ -231,7 +240,9 @@ def train(model, step, memories):
             next_input = [torch.tensor(next_state, dtype=torch.float), next_choice]
 
         loss = step(feature=feature, label=label, reward=reward, next_input=next_input)
-        losses.append(loss)
+        # only calculate losses for AI agent (player1)
+        if state[28] == 1:
+            losses.append(loss)
 
     return losses
 
@@ -243,10 +254,10 @@ def cleanup_files(file_dir, pattern):
 
 
 def app():
-    discovery_rate = 0.0
-    decay_rate = 0.95
+    discovery_rate = 1.0
+    decay_rate = 0.99
 
-    learn_rate = 0.01
+    learn_rate = 0.00005  # 0.01
     discount_rate = 0.9
 
     seed = 0
@@ -255,7 +266,7 @@ def app():
     policy_dqn = t3.get_model(filename=model_filename, input_args=model_args)
     target_dqn = t3.get_model(filename=None, input_args=model_args)
 
-    loss_fn = nn.MSELoss()
+    loss_fn = nn.HuberLoss(delta=1.0)  # nn.MSELoss()
     optimizer = optim.Adam(policy_dqn.parameters(), lr=learn_rate)
     train_step = make_qlearning_train_step(policy_dqn, target_dqn, loss_fn, optimizer, discount_rate)
 
@@ -282,6 +293,7 @@ def app():
 
         reload_model(api_base_url)
         discovery_rate = discovery_rate * decay_rate
+
 
 # =========================
 # Entry Point

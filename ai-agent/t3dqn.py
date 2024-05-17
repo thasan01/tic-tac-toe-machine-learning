@@ -16,8 +16,8 @@ class Model(nn.Module):
         self.output_nodes = output_nodes
         # fully connected network
         self.fc1 = nn.Linear(input_nodes, hidden_layer1_nodes)
-        self.fc2 = nn.Linear(hidden_layer1_nodes, hidden_layer1_nodes)
-        self.fc3 = nn.Linear(hidden_layer1_nodes, hidden_layer1_nodes)
+        self.fc2 = nn.Linear(hidden_layer1_nodes, hidden_layer1_nodes*7)
+        self.fc3 = nn.Linear(hidden_layer1_nodes*7, hidden_layer1_nodes)
         self.out = nn.Linear(hidden_layer1_nodes, output_nodes)
         self.dropout1 = nn.Dropout(0.1)
         self.leakyReLU = nn.LeakyReLU(0.1)
@@ -27,11 +27,11 @@ class Model(nn.Module):
     def forward(self, x):
         # Apply rectified linear unit (ReLU) activation
         x = self.leakyReLU(self.fc1(x))
-        # x = self.dropout1(x)
+        x = self.dropout1(x)
         x = self.leakyReLU(self.fc2(x))
-        # x = self.dropout1(x)
+        x = self.dropout1(x)
         x = self.leakyReLU(self.fc3(x))
-        # x = self.dropout1(x)
+        x = self.dropout1(x)
         # x = self.sigmoid(self.out(x))  # Calculate output
         x = self.out(x)
         return x
