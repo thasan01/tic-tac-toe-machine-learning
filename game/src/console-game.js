@@ -16,13 +16,23 @@ switch (argv.encoder) {
 }
 
 let config = {};
+argv.configDir = "game/config"
 if (argv.configDir) {
   process.env["NODE_CONFIG_DIR"] = argv.configDir;
   config = require("config");
 }
+
 let inputArgs = { ...config, ...argv };
 
 function loadPlayer(type, args, playerId) {
+  let playerProfiles = args["profiles"];
+
+  if (args["_"].length < 2)
+    throw new Error("Invalid input paramters");
+
+  profileId = args["_"][playerId-1];
+  type = playerProfiles[profileId].playerType;
+
   if (type === "HumanConsolePlayer")
     //
     Player = require("./player/console-human-player");

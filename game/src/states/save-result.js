@@ -6,11 +6,8 @@ let save = {
       let { outdir, sessionName } = session;
 
       if (!outdir || !sessionName)
-        return reject(
-          new Error(
-            "Unable to write to file because outdir or session name are invalid."
-          )
-        );
+        return resolve();
+        //return reject(new Error("Unable to write to file because outdir or session name are invalid."));
 
       let filename = `${outdir}/${sessionName}.txt`;
 

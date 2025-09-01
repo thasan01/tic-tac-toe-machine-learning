@@ -125,6 +125,7 @@ let turn = {
 
 let end = {
   logic: async ({ renderer, session }) => {
+    console.log("entered end state")
     if (!session.suppressOutput) renderer(session);
   },
 };

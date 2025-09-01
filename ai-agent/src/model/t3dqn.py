@@ -1,0 +1,166 @@
+import torch
+from torch import nn
+import torch.nn.functional as F
+import os
+import os.path as path
+import time
+import zipfile
+from randomutil import Random
+
+DEFAULT_MODEL_FILENAME = "t3-model.pth"
+DEFAULT_TRAINING_FILENAME = "t3-training.pth"
+DEFAULT_RELU_RATE = 0.1
+DEFAULT_DROPOUT_RATE = 0.1
+
+output_space = set(range(9))
+
+# Tic-Tac-Toe Deep Q Learning Network
+class T3DQNet(nn.Module):
+    def __init__(self,
+                 num_input_nodes:int,
+                 num_hidden_layer_nodes:list[int],
+                 num_output_nodes:int,
+                 random:Random=Random(),
+                 relu_rate:float = DEFAULT_RELU_RATE,
+                 dropout_rate:float = DEFAULT_DROPOUT_RATE):
+        super(T3DQNet, self).__init__()
+        self.num_input_nodes = num_input_nodes
+        self.num_hidden_layer_nodes = num_hidden_layer_nodes
+        self.num_output_nodes = num_output_nodes
+        self.random = random
+        self.relu_rate = relu_rate
+        self.dropout_rate = dropout_rate
+
+        # This list will hold the layers of the neural network
+        layers = []
+
+        # Add the first hidden layer
+        if num_hidden_layer_nodes:
+            layers.append(nn.Linear(num_input_nodes, num_hidden_layer_nodes[0]))
+            layers.append(nn.LeakyReLU(self.relu_rate))
+            layers.append(nn.Dropout(self.dropout_rate))
+
+            # Add subsequent hidden layers
+            for i in range(len(num_hidden_layer_nodes) - 1):
+                layers.append(nn.Linear(num_hidden_layer_nodes[i], num_hidden_layer_nodes[i + 1]))
+                layers.append(nn.LeakyReLU(self.relu_rate))
+                layers.append(nn.Dropout(self.dropout_rate))
+
+            # Add the output layer
+            layers.append(nn.Linear(num_hidden_layer_nodes[-1], num_output_nodes))
+        else:  # No hidden layers
+            layers.append(nn.Linear(num_input_nodes, num_output_nodes))
+
+        # Combine all the layers into a sequential module
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x):
+        # The forward pass simply passes the input through the sequential network
+        x = self.network(x)
+        return x
+
+    def inference(self, state, exploration_rate, options=None):
+        if exploration_rate is not None and self.random.fraction() < exploration_rate:
+            # select random action
+            return options[self.random.range(len(options))]
+        else:
+            with torch.no_grad():
+                x = torch.FloatTensor(state)
+                y = self.forward(x)
+                # Apply mask on the output if valid options exists
+                if options is not None:
+                    for i in (output_space - set(options)):
+                        y[i] = float("-inf")
+
+                return torch.argmax(y).item()
+
+def load_model(model_dir:str, **kwargs):
+    model_filename = path.join(model_dir, DEFAULT_MODEL_FILENAME)
+    if path.exists(model_filename):
+        model_config = torch.load(model_filename)
+        model = T3DQNet(model_config["num_input_nodes"],
+                     model_config["num_hidden_layer_nodes"],
+                     model_config["num_output_nodes"],
+                     relu_rate=model_config["relu_rate"],
+                     dropout_rate=model_config["dropout_rate"])
+    else:
+        req_keys = ["num_input_nodes", "num_hidden_layer_nodes", "num_output_nodes"]
+        if not all(key in kwargs for key in req_keys):
+            raise KeyError(f"Missing one or more of the following required inputs: {req_keys}")
+
+        model = T3DQNet(kwargs.get("num_input_nodes"),
+                     kwargs.get("num_hidden_layer_nodes"),
+                     kwargs.get("num_output_nodes"),
+                     relu_rate=kwargs.get("relu_rate", DEFAULT_RELU_RATE),
+                     dropout_rate=kwargs.get("dropout_rate", DEFAULT_DROPOUT_RATE))
+
+    is_inference = kwargs.get("is_inference", False)
+    ret_config = {}
+    if not is_inference:
+        training_filename = path.join(model_dir, DEFAULT_TRAINING_FILENAME)
+        if path.exists(training_filename):
+            training_config = torch.load(training_filename)
+            if "optimizer_state" in training_config: ret_config["optimizer_state"] = training_config["optimizer_state"]
+            if "epoch" in training_config: ret_config["epoch"] = training_config["epoch"]
+            if "loss" in training_config: ret_config["loss"] = training_config["loss"]
+
+    return model, ret_config
+
+def save_model_checkpoint(model_dir:str, model:T3DQNet, **kwargs):
+    os.makedirs(model_dir, exist_ok=True)
+    model_config = {
+        "num_input_nodes" : model.num_input_nodes,
+        "num_hidden_layer_nodes": model.num_hidden_layer_nodes,
+        "num_output_nodes" :model.num_output_nodes,
+        "relu_rate" :model.relu_rate,
+        "dropout_rate" : model.dropout_rate,
+        "model_state": model.state_dict()
+    }
+    torch.save(model_config, path.join(model_dir, DEFAULT_MODEL_FILENAME))
+
+    training_config = {
+        "optimizer_state": kwargs.get("optimizer_state") if "optimizer_state" in kwargs else None,
+        "epoch": kwargs.get("epoch", 0),
+        "loss": kwargs.get("loss", None)
+    }
+    torch.save(training_config, path.join(model_dir, DEFAULT_TRAINING_FILENAME))
+
+if __name__ == "__main__":
+    num_batches = 1
+    num_input_nodes = 30
+    num_hidden_layer_nodes = [128, 256, 512, 256, 128]
+    num_output_nodes = 9
+
+    # --- FIX 1: Change dtype to float32 ---
+    # The torch.randn() function generates floating-point numbers.
+    # We must set the data type to a floating-point type like torch.float32.
+    input_tensor = torch.randn(num_batches, num_input_nodes, dtype=torch.float32)
+
+    # --- FIX 2: Create a proper target tensor ---
+    # Targets for CrossEntropyLoss should be integer labels, not random floats.
+    # The labels represent the correct action (0-8).
+    expected_output_labels = torch.randint(0, num_output_nodes, (num_batches,))
+    print(f"expected_output_labels: {expected_output_labels}")
+
+    model_dir = "../../data/model/t3"
+    t3model, t3config = load_model(model_dir,
+            num_input_nodes=num_input_nodes,
+            num_hidden_layer_nodes = num_hidden_layer_nodes,
+            num_output_nodes = num_output_nodes
+        )
+
+    # The model's raw output (logits) is used directly for CrossEntropyLoss
+    out_q_values = t3model(input_tensor)
+
+    # --- FIX 3: Use the correct loss function ---
+    # For a multi-class problem like Tic-Tac-Toe with 9 outputs,
+    # nn.CrossEntropyLoss is the correct choice and is more stable.
+    # It automatically applies softmax and calculates the log-likelihood loss.
+    loss_func = nn.CrossEntropyLoss()
+    loss = loss_func(out_q_values, expected_output_labels)
+
+    save_model_checkpoint(model_dir, t3model)
+
+    print(f"out_q_values (logits):\n{out_q_values}")
+    print(f"choice: {torch.argmax(out_q_values)}")
+    print(f"loss: {loss.item()}")

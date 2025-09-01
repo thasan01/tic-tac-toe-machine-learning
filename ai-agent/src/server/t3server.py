@@ -1,31 +1,26 @@
+import threading
 from flask import Flask, request
-import json
-import random
-import torch
-import t3dqn as t3
+import src.model.t3dqn as t3
 from t3encoder import encode
 import logging
 
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
+app = Flask(__name__)  # Flask constructor
+shutdown_event = threading.Event()
+agent = None
 
 class Agent:
-    def __init__(self):
-        self.model_filename = "./data/model/t3-simple1.pt"
-        self.model = None
+    def __init__(self, model):
+        self.model = model
 
-    def reload(self):
-        self.model = t3.get_model(filename=self.model_filename)
+    def reload(self, model_dir:str):
+        self.model, _ = t3.load_model(model_dir, is_inference=True)
         self.model.eval()
 
     def decide(self, state, exploration_rate, options):
         return self.model.inference(state, exploration_rate, options)
-
-
-agent = Agent()
-agent.reload()
-app = Flask(__name__)  # Flask constructor
 
 
 # A decorator used to tell the application
@@ -37,7 +32,7 @@ def ping():
 
 @app.route('/model/reload', methods=['POST'])
 def reload_model():
-    agent.reload()
+    agent.reload("") #TODO: implement later
     return {"message": "Reloaded model"}
 
 
@@ -54,6 +49,17 @@ def player_choice():
     choice = agent.decide(state=encode(board, player_id), exploration_rate=exploration_rate, options=options)
     return {"choice": choice, "playerId": player_id}
 
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    shutdown_event.set()
+    return {"status": "Shutdown flag set"}
+
 
 if __name__ == '__main__':
-    app.run()
+    model_dir = "./data/model/t3"
+    t3model, _ = t3.load_model(model_dir, is_inference=True)
+    agent = Agent(t3model)
+
+    server_hostname = '127.0.0.1'
+    server_port = 5000
+    app.run(host=server_hostname, port=server_port)

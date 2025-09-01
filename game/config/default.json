@@ -1,9 +1,17 @@
 {
-    "trueRandomRate" : 0.25,
     "outdir": "game/build",
     "profiles" : {
-        "rl-agent-1" : {
+        "rl-agent" : {
+            "playerType" : "RLWebAgentPlayer",
+            "explorationRate": 0.25,
             "baseUrl" : "http://127.0.0.1:5000"
+        },
+        "human-console" : {
+            "playerType" : "HumanConsolePlayer"
+        },
+        "random-agent" : {
+            "playerType" : "RandomPlayer",
+            "trueRandomRate" : 0.25
         }
     }
 }

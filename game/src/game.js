@@ -25,26 +25,34 @@ let game = async ({
     history: [],
   };
 
+  let newState = null;
   while (currentState.transitions) {
     let promise = currentState.logic({ renderer, encoder, session });
-    let newState = null;
 
     await promise
       .then((resp) => {
         let trans = currentState.transitions;
         newState = processTransitions(trans, session);
       })
-      .catch((resp) => {
-        console.log("Encountered Error: ", resp);
+      .catch((err) => {
+        console.error("Encountered Error: ", err.message);   
       })
       .finally(() => {
-        if (newState != null) currentState = states[newState];
+        if (newState != null) {
+          currentState = states[newState];
+        }
+
         //Current State has transitions defined but none of them were acivated,
         //so setting transitions to null to break out of the loop.
         else currentState.transitions = null;
       });
   }
-  currentState.logic({ renderer, encoder, session });
+
+  if (newState === "end"){
+    currentState.logic({ renderer, encoder, session })
+      .catch(err => console.error("Encountered Error: ", err.message));   
+  }
+
 };
 
 module.exports = game;
