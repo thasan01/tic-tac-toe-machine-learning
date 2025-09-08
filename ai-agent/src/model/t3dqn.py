@@ -1,10 +1,7 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 import os
 import os.path as path
-import time
-import zipfile
 from randomutil import Random
 
 DEFAULT_MODEL_FILENAME = "t3-model.pth"
@@ -83,6 +80,10 @@ def load_model(model_dir:str, **kwargs):
                      model_config["num_output_nodes"],
                      relu_rate=model_config["relu_rate"],
                      dropout_rate=model_config["dropout_rate"])
+
+        if "model_state" in model_config:
+            model.load_state_dict(model_config["model_state"])
+
     else:
         req_keys = ["num_input_nodes", "num_hidden_layer_nodes", "num_output_nodes"]
         if not all(key in kwargs for key in req_keys):

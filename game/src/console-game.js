@@ -47,7 +47,7 @@ function loadPlayer(type, args, playerId) {
     Player = require("./player/heuristic-player");
   else throw new Error(`Invalid player type: ${type}`);
 
-  return new Player(args, playerId);
+  return new Player(args, playerId, profileId);
 }
 
 let init = {

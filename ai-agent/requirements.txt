@@ -3,3 +3,4 @@ numpy==1.26.3
 torch==2.8.0
 Flask~=3.1.2
 requests~=2.32.5
+tb-nightly~=2.21.0a20250906

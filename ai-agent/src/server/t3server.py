@@ -10,6 +10,7 @@ log.setLevel(logging.INFO)
 app = Flask(__name__)  # Flask constructor
 shutdown_event = threading.Event()
 agent = None
+model_dir = None
 
 class Agent:
     def __init__(self, model):
@@ -32,7 +33,7 @@ def ping():
 
 @app.route('/model/reload', methods=['POST'])
 def reload_model():
-    agent.reload("") #TODO: implement later
+    agent.reload(model_dir)
     return {"message": "Reloaded model"}
 
 
@@ -57,8 +58,8 @@ def shutdown():
 
 if __name__ == '__main__':
     model_dir = "./data/model/t3"
-    t3model, _ = t3.load_model(model_dir, is_inference=True)
-    agent = Agent(t3model)
+    agent = Agent(model_dir)
+    agent.reload(model_dir)
 
     server_hostname = '127.0.0.1'
     server_port = 5000

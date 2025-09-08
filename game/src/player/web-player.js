@@ -10,21 +10,20 @@ const jsonHeaders = {
 };
 
 function getProfile(args, playerId) {
-  let key = `player${playerId}Profile`;
-  return args && args.profiles ? args.profiles[args[key]] : null;
+  return args && args.profiles ? args.profiles[playerId] : null;
 }
 
 class WebPlayer extends Player {
-  constructor(args, playerId) {
+  constructor(args, playerId, profileId) {
     super();
-    let profile = getProfile(args, playerId);
+    let profile = getProfile(args, profileId);
 
     if (!profile)
       throw new Error(`Unable to find profile for player[${playerId}]`);
 
     this.playerId = playerId;
     this.baseUrl = profile.baseUrl;
-    this.explorationRate = args.explorationRate;
+    this.explorationRate = profile.explorationRate;
   }
 
   async register() {
