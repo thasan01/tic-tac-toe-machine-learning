@@ -40,12 +40,13 @@ def request_shutdown(base_url:str):
 def run_games(epoch, session_template, max_sessions, exploration_rate):
     for i in range(max_sessions):
         session = session_template.format(epoch, i)
-        subprocess.run([
-            "node", "../game/build/tic-tac-toe.console.js",
-            "random-agent random-agent",
-            "--sessionName", session,
-            "--encoder", "OneHotEncoder",
-            ])
+
+        subprocess.run(
+            "node ./game/build/tic-tac-toe.console.js random-agent random-agent --outdir game/build --sessionName {} --encoder OneHotEncoder".format(session),
+            shell=True,
+            capture_output=False,
+            text=True
+        )
 
 def onehot_encode_state(action):
     onehot_player = [0, 0, 0]
