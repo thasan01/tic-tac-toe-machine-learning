@@ -114,7 +114,6 @@ class T3DQLDataset(Dataset):
             self.board_states = torch.stack(self.board_states).float()
 
     def post_step(self):
-        print("cleaning up")
         if self.delete_training_files:
             for dir_path, dir_names, filenames in os.walk(self.root_dir):
                 for filename in filenames:
@@ -122,7 +121,6 @@ class T3DQLDataset(Dataset):
                         file_path = os.path.join(dir_path, filename)
                         try:
                             os.remove(file_path)
-                            print(f"Successfully deleted: {file_path}")
                         except Exception as e:
                             print(f"Error deleting file {file_path}: {e}")
 
@@ -163,10 +161,10 @@ if __name__ == "__main__":
     dropout_rate=0.1
 
     # training params
-    max_epochs = 10
-    learn_rate = 1e-5
-    batch_size=100
-    max_sessions=100
+    max_epochs = 500
+    learn_rate = 1e-6
+    batch_size=500
+    max_sessions=500
 
     session_template = "training-{:06d}-{:06d}"
     good_move_score = 1
@@ -238,7 +236,7 @@ if __name__ == "__main__":
 
                 tb_log.add_scalar('Loss/train', loss.item(), epoch * repeat * len(loader) + i)
 
-            print(f"{repeat} - loss: {loss}")
+            print(f"epoch: {epoch} repeat: {repeat} loss: {loss}")
 
         dataset.post_step()
         save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=loss)
