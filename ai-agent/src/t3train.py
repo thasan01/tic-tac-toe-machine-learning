@@ -44,7 +44,7 @@ def run_games(epoch, session_template, max_sessions, exploration_rate):
         subprocess.run(
             "node ./game/build/tic-tac-toe.console.js random-agent random-agent --outdir game/build --suppressOutput --sessionName {} --encoder OneHotEncoder".format(session),
             shell=True,
-            capture_output=False,
+            capture_output=True,
             text=True
         )
 
