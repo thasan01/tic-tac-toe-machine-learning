@@ -96,7 +96,8 @@ class T3DQLDataset(Dataset):
                 parsed_json = json.load(file)
                 history = parsed_json["history"]
                 max_actions = len(history)
-                self.__calculate_session_stats(parsed_json["winner"], parsed_json["status"])
+                winner = parsed_json["winner"] if "winner" in parsed_json else None
+                self.__calculate_session_stats(winner, parsed_json["status"])
 
                 for act_idx, action in enumerate(history):
                     curr_choice = action["choice"]
