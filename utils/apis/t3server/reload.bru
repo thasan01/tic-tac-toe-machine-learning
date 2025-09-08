@@ -1,0 +1,20 @@
+meta {
+  name: reload
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/model/reload
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+  }
+}
+
+settings {
+  encodeUrl: true
+}
