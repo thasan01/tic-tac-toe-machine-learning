@@ -217,8 +217,8 @@ if __name__ == "__main__":
     if "optimizer_state" in t3config and t3config["optimizer_state"]:
         optimizer.load_state_dict(t3config["optimizer_state"])
 
-    exp_rate = t3config["exploration_rate"]
-    exp_decay = t3config["exploration_decay"]
+    exp_rate = t3config["exploration_rate"] if "exploration_rate" in t3config else 1.0
+    exp_decay = t3config["exploration_decay"] if "exploration_decay" in t3config else 0.99
     dataset = T3DQLDataset(data_dir, "training-(.*).txt", exploration_rate=exp_rate, exploration_decay=exp_decay)
     loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=True)
     loss_fn = torch.nn.MSELoss()
