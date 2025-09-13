@@ -23,7 +23,7 @@ class WebPlayer extends Player {
 
     this.playerId = playerId;
     this.baseUrl = profile.baseUrl;
-    this.explorationRate = profile.explorationRate;
+    this.explorationRate = args.explorationRate || profile.explorationRate || 0.0;
   }
 
   async register() {

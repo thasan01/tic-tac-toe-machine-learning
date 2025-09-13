@@ -104,6 +104,8 @@ def load_model(model_dir:str, **kwargs):
             if "optimizer_state" in training_config: ret_config["optimizer_state"] = training_config["optimizer_state"]
             if "epoch" in training_config: ret_config["epoch"] = training_config["epoch"]
             if "loss" in training_config: ret_config["loss"] = training_config["loss"]
+            if "exploration_rate" in training_config: ret_config["exploration_rate"] = training_config["exploration_rate"]
+            if "exploration_decay" in training_config: ret_config["exploration_decay"] = training_config["exploration_decay"]
 
     return model, ret_config
 
@@ -122,7 +124,9 @@ def save_model_checkpoint(model_dir:str, model:T3DQNet, **kwargs):
     training_config = {
         "optimizer_state": kwargs.get("optimizer_state") if "optimizer_state" in kwargs else None,
         "epoch": kwargs.get("epoch", 0),
-        "loss": kwargs.get("loss", None)
+        "loss": kwargs.get("loss", None),
+        "exploration_rate": kwargs.get("exploration_rate"),
+        "exploration_decay": kwargs.get("exploration_decay")
     }
     torch.save(training_config, path.join(model_dir, DEFAULT_TRAINING_FILENAME))
 

@@ -46,8 +46,8 @@ def run_games(epoch, session_template, max_sessions, exploration_rate):
         session = session_template.format(epoch, i)
 
         subprocess.run(
-            "node ./game/build/tic-tac-toe.console.js random-agent random-agent --outdir {} --suppressOutput --sessionName {} --encoder OneHotEncoder".format(
-                data_dir, session),
+            "node ./game/build/tic-tac-toe.console.js rl-agent random-agent --outdir {} --suppressOutput --sessionName {} --encoder OneHotEncoder --explorationRate {}".format(
+                data_dir, session, exploration_rate),
             shell=True,
             capture_output=True,
             text=True
@@ -61,13 +61,15 @@ def onehot_encode_state(action):
 
 
 class T3DQLDataset(Dataset):
-    def __init__(self, root_dir: str, file_expression: str = ".*", delete_training_files=True):
+    def __init__(self, root_dir: str, file_expression: str = ".*", delete_training_files=True, exploration_rate=0.0, exploration_decay = 0.0):
         self.delete_training_files = delete_training_files
         self.root_dir = root_dir
         self.file_pattern = re.compile(file_expression)
         self.memories = []
         self.board_states = []
         self.stats = {}
+        self.exploration_rate = exploration_rate
+        self.exploration_decay = exploration_decay
 
     def __reset_stats(self):
         self.stats = {"p1_wins": 0, "p2_wins": 0, "draws": 0, "p1_dqs": 0, "p2_dqs": 0}
@@ -93,7 +95,9 @@ class T3DQLDataset(Dataset):
         self.board_states = []
         self.__reset_stats()
 
-        run_games(epoch, session_template, max_sessions, exploration_rate=1.0)
+        run_games(epoch, session_template, max_sessions, exploration_rate=self.exploration_rate)
+        self.exploration_rate *= self.exploration_decay
+
 
         files_to_scan = self.__scan_dir()
         for filename in files_to_scan:
@@ -179,7 +183,7 @@ if __name__ == "__main__":
     dropout_rate = 0.1
 
     # training params
-    max_epochs = 500
+    max_epochs = 100
     learn_rate = 1e-6
     batch_size = 500
     max_sessions = 500
@@ -213,8 +217,10 @@ if __name__ == "__main__":
     if "optimizer_state" in t3config and t3config["optimizer_state"]:
         optimizer.load_state_dict(t3config["optimizer_state"])
 
-    dataset = T3DQLDataset(data_dir, "training-(.*).txt")
-    loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=False)
+    exp_rate = t3config["exploration_rate"]
+    exp_decay = t3config["exploration_decay"]
+    dataset = T3DQLDataset(data_dir, "training-(.*).txt", exploration_rate=exp_rate, exploration_decay=exp_decay)
+    loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=True)
     loss_fn = torch.nn.MSELoss()
 
     tb_log = SummaryWriter(logs_dir)
@@ -232,8 +238,8 @@ if __name__ == "__main__":
             'Draws': dataset.stats["draws"]
         }, epoch)
 
+        t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
         for repeat in range(5):
-            t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
 
             for i, batch in enumerate(loader):
                 curr_state_idx, next_state_idx, curr_choice, reward, is_game_end = batch
@@ -272,21 +278,23 @@ if __name__ == "__main__":
                 loss.backward()
                 optimizer.step()
 
-                tb_log.add_scalar('Loss/train', loss.item(), epoch * repeat * len(loader) + i)
-
-            print(f"epoch: {epoch} repeat: {repeat} loss: {loss}")
+        tb_log.add_scalar('Loss/train', loss.item(), epoch)
+        print(f"epoch: {epoch} loss: {loss}")
 
         dataset.post_step()
-        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=loss)
+
+        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
         # requests.post(f"{server_base_url}/model/reload", json={})
 
     t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
-    save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=loss)
+    save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
 
     tb_log.close()
 
     # Server shutdown
-    request_shutdown(server_base_url)
-    t3server.shutdown_event.wait(timeout=60)
-    os.kill(os.getpid(), signal.SIGINT)
-    server_thread.join(timeout=60)
+    try:
+        request_shutdown(server_base_url)
+        t3server.shutdown_event.wait(timeout=60)
+        os.kill(os.getpid(), signal.SIGINT)
+    finally:
+        server_thread.join(timeout=60)
