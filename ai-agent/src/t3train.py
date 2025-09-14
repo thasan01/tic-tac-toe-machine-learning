@@ -172,7 +172,7 @@ if __name__ == "__main__":
         _, data_dir, logs_dir, model_dir = sys.argv
 
     # contains all the values for initial training
-    init_config_filename = sys.argv[4] if len(sys.argv) >= 5 else "./data/init_train_config.json"
+    init_config_filename = sys.argv[4] if len(sys.argv) >= 5 else "./ai-agent/data/init_train_config.json"
     with open(init_config_filename) as file:
         init_config = json.load(file)
 
