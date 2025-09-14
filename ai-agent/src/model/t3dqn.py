@@ -8,7 +8,7 @@ DEFAULT_MODEL_FILENAME = "t3-model.pth"
 DEFAULT_TRAINING_FILENAME = "t3-training.pth"
 DEFAULT_RELU_RATE = 0.1
 DEFAULT_DROPOUT_RATE = 0.1
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 output_space = set(range(9))
 
 # Tic-Tac-Toe Deep Q Learning Network
@@ -62,14 +62,21 @@ class T3DQNet(nn.Module):
             return options[self.random.range(len(options))]
         else:
             with torch.no_grad():
-                x = torch.FloatTensor(state)
+                x = torch.tensor(state, dtype=torch.float32).to(device)
+                # Reshape the tensor to match the expected batch dimension
+                x = x.reshape(1, len(state))
+
                 y = self.forward(x)
+                # Remove the batch dimension before further processing
+                y = y.squeeze(0)
+
                 # Apply mask on the output if valid options exists
                 if options is not None:
-                    for i in (output_space - set(options)):
-                        y[i] = float("-inf")
+                    output_options_tensor = torch.tensor(list(output_space - set(options)), dtype=torch.long).to(device)
+                    y.index_fill_(0, output_options_tensor, float("-inf"))
 
                 return torch.argmax(y).item()
+
 
 def load_model(model_dir:str, **kwargs):
     model_filename = path.join(model_dir, DEFAULT_MODEL_FILENAME)
