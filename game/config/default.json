@@ -12,6 +12,9 @@
         "random-agent" : {
             "playerType" : "RandomPlayer",
             "trueRandomRate" : 0.25
+        },
+        "heuristic-agent": {
+            "playerType" : "HeuristicPlayer"
         }
     }
 }

@@ -90,7 +90,6 @@ def load_model(model_dir:str, **kwargs):
 
         if "model_state" in model_config:
             model.load_state_dict(model_config["model_state"])
-
     else:
         req_keys = ["num_input_nodes", "num_hidden_layer_nodes", "num_output_nodes"]
         if not all(key in kwargs for key in req_keys):
@@ -114,6 +113,7 @@ def load_model(model_dir:str, **kwargs):
             if "exploration_rate" in training_config: ret_config["exploration_rate"] = training_config["exploration_rate"]
             if "exploration_decay" in training_config: ret_config["exploration_decay"] = training_config["exploration_decay"]
 
+    model = model.to(device)
     return model, ret_config
 
 def save_model_checkpoint(model_dir:str, model:T3DQNet, **kwargs):

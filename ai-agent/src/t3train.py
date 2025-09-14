@@ -171,29 +171,39 @@ if __name__ == "__main__":
     else:
         _, data_dir, logs_dir, model_dir = sys.argv
 
+    # contains all the values for initial training
+    init_config_filename = sys.argv[4] if len(sys.argv) < 5 else "./data/init_train.json"
+    with open(init_config_filename) as file:
+        init_config = json.load(file)
+
     # server params
-    server_host = "127.0.0.1"
-    server_port = 5000
+    server_host = init_config.get("server_host", "127.0.0.1")
+    server_port = init_config.get("server_port",5000)
     server_base_url = f"http://{server_host}:{server_port}"
 
-    num_input_nodes = 30
-    num_hidden_layer_nodes = [128, 256, 512, 256, 128]
-    num_output_nodes = 9
-    relu_rate = 0.1
-    dropout_rate = 0.1
+    num_input_nodes = init_config.get("num_input_nodes",30)
+    num_hidden_layer_nodes = init_config.get("num_hidden_layer_nodes",[128, 256, 512, 256, 128])
+    num_output_nodes = init_config.get("num_output_nodes",9)
+    relu_rate = init_config.get("relu_rate",0.1)
+    dropout_rate = init_config.get("dropout_rate",0.1)
 
     # training params
-    max_epochs = 500
-    learn_rate = 1e-6
-    batch_size = 500
-    max_sessions = 500
-    max_repeats = 500
+    max_epochs = init_config.get("max_epochs",500)
+    learn_rate = init_config.get("learn_rate",1e-6)
+    batch_size = init_config.get("batch_size",500)
+    max_sessions = init_config.get("max_sessions",500)
+    max_repeats = init_config.get("max_repeats",500)
 
-    session_template = "training-{:06d}-{:06d}"
-    good_move_score = 1
-    invalid_move_score = -10
-    default_move_score = -0.1
-    discount_factor = 0.9
+    p1_profile = init_config.get("p1_profile","rl-agent")
+    p2_profile = init_config.get("p2_profile","random-agent")
+
+    session_template = init_config.get("session_template","training-{:06d}-{:06d}")
+    good_move_score = init_config.get("good_move_score",1)
+    invalid_move_score = init_config.get("invalid_move_score",-10)
+    default_move_score = init_config.get("default_move_score",-0.1)
+    discount_factor = init_config.get("discount_factor",0.9)
+    exploration_rate = init_config.get("exploration_rate",1.0)
+    exploration_decay = init_config.get("exploration_decay",0.9)
 
     t3policy_dqn, t3config = load_model(model_dir, is_inference=False, num_input_nodes=num_input_nodes,
                                         num_hidden_layer_nodes=num_hidden_layer_nodes,
@@ -218,9 +228,13 @@ if __name__ == "__main__":
     if "optimizer_state" in t3config and t3config["optimizer_state"]:
         optimizer.load_state_dict(t3config["optimizer_state"])
 
-    exp_rate = t3config["exploration_rate"] if "exploration_rate" in t3config else 1.0
-    exp_decay = t3config["exploration_decay"] if "exploration_decay" in t3config else 0.99
-    dataset = T3DQLDataset(data_dir, "training-(.*).txt", exploration_rate=exp_rate, exploration_decay=exp_decay)
+    if "exploration_rate" in t3config:
+        exploration_rate = t3config["exploration_rate"]
+
+    if "exploration_decay" in t3config:
+        exploration_decay = t3config["exploration_decay"]
+
+    dataset = T3DQLDataset(data_dir, "training-(.*).txt", exploration_rate=exploration_rate, exploration_decay=exploration_decay)
     loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=True)
     loss_fn = torch.nn.MSELoss()
 
@@ -280,7 +294,7 @@ if __name__ == "__main__":
                 optimizer.step()
 
         tb_log.add_scalar('Loss/train', loss.item(), epoch)
-        print(f"epoch: {epoch} loss: {loss}")
+        print(f"epoch: {epoch} loss: {loss}, exp_rate: {exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
