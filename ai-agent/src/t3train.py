@@ -65,7 +65,7 @@ class T3DQLDataset(Dataset):
         self.delete_training_files = delete_training_files
         self.root_dir = root_dir
         self.file_pattern = re.compile(file_expression)
-        self.memories = []
+        self.memories = [None] # Added single element to bypass the dataloader
         self.board_states = []
         self.stats = {}
         self.exploration_rate = exploration_rate
