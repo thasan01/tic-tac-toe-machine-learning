@@ -7,6 +7,9 @@ import logging
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
+flask_log = logging.getLogger('werkzeug')
+flask_log.setLevel(logging.ERROR)
+
 app = Flask(__name__)  # Flask constructor
 shutdown_event = threading.Event()
 agent = None
