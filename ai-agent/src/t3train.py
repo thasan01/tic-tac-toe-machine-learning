@@ -183,10 +183,11 @@ if __name__ == "__main__":
     dropout_rate = 0.1
 
     # training params
-    max_epochs = 100
+    max_epochs = 500
     learn_rate = 1e-6
     batch_size = 500
     max_sessions = 500
+    max_repeats = 500
 
     session_template = "training-{:06d}-{:06d}"
     good_move_score = 1
@@ -239,7 +240,7 @@ if __name__ == "__main__":
         }, epoch)
 
         t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
-        for repeat in range(5):
+        for repeat in range(max_repeats):
 
             for i, batch in enumerate(loader):
                 curr_state_idx, next_state_idx, curr_choice, reward, is_game_end = batch
@@ -295,6 +296,6 @@ if __name__ == "__main__":
     try:
         request_shutdown(server_base_url)
         t3server.shutdown_event.wait(timeout=60)
-        os.kill(os.getpid(), signal.SIGINT)
+        # os.kill(os.getpid(), signal.SIGINT)
     finally:
         server_thread.join(timeout=60)
