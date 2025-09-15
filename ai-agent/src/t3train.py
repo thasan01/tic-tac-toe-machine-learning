@@ -76,7 +76,7 @@ class T3DQLDataset(Dataset):
 
     def __calculate_session_stats(self, winner, status_msg):
         if winner == 0:
-            if "draws" in status_msg:
+            if "draw" in status_msg:
                 self.stats["draws"] += 1
         elif winner is None:
             if status_msg == "Player1 disqualified!":
@@ -294,7 +294,7 @@ if __name__ == "__main__":
                 optimizer.step()
 
         tb_log.add_scalar('Loss/train', loss.item(), epoch)
-        print(f"epoch: {epoch} loss: {loss}, exp_rate: {exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
+        print(f"epoch: {epoch} loss: {loss}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
