@@ -12,7 +12,7 @@
     "learn_rate": 1e-6,
     "batch_size": 500,
     "max_sessions": 500,
-    "max_repeats": 10,
+    "policy_sync_rate": 10,
 
     "session_template": "training-{:06d}-{:06d}",
     "good_move_score": 1,
