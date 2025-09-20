@@ -221,10 +221,10 @@ if __name__ == "__main__":
 
     # Server startup
     def run_webapp():
+        t3server.model_dir = model_dir
+        t3server.agent = t3server.Agent(None)
         t3server.app.run(host=server_host, port=server_port)
 
-    t3server.model_dir = model_dir
-    t3server.agent = t3server.Agent(t3policy_dqn)
     server_thread = threading.Thread(target=run_webapp)
     server_thread.start()
 
@@ -316,4 +316,7 @@ if __name__ == "__main__":
         t3server.shutdown_event.wait(timeout=60)
         # os.kill(os.getpid(), signal.SIGINT)
     finally:
-        server_thread.join(timeout=60)
+        try:
+            server_thread.join(timeout=60)
+        finally:
+            pass

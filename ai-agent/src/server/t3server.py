@@ -16,8 +16,10 @@ agent = None
 model_dir = None
 
 class Agent:
-    def __init__(self, model):
+    def __init__(self, model=None):
         self.model = model
+        if model is None:
+            self.reload(model_dir)
 
     def reload(self, model_dir:str):
         self.model, _ = t3.load_model(model_dir, is_inference=True)
