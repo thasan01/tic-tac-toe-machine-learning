@@ -54,9 +54,9 @@ def run_games(epoch, session_template, max_sessions, exploration_rate):
         )
 
 
-def onehot_encode_state(action):
+def onehot_encode_state(action, player_id:int):
     onehot_player = [0, 0, 0]
-    onehot_player[action["player"]] = 1
+    onehot_player[agent_player_id] = 1
     return action["board"] + onehot_player
 
 
@@ -114,7 +114,7 @@ class T3DQLDataset(Dataset):
                     curr_choice = action["choice"]
                     is_game_end = (act_idx == max_actions - 1)
 
-                    curr_state = torch.tensor(onehot_encode_state(action))
+                    curr_state = torch.tensor(onehot_encode_state(action, agent_player_id))
                     curr_state_idx = len(self.board_states)
 
                     # If it's the last action, there is no next state.
@@ -127,7 +127,7 @@ class T3DQLDataset(Dataset):
                         # Reward for the final move is based on the game's outcome
                         if winner == 0:  # Draw
                             reward = 0
-                        elif action["player"] == winner:
+                        elif agent_player_id == winner:
                             reward = good_move_score  # Win
                         else:
                             reward = -good_move_score  # Loss
@@ -198,6 +198,7 @@ if __name__ == "__main__":
 
     p1_profile = init_config.get("p1_profile","rl-agent")
     p2_profile = init_config.get("p2_profile","random-agent")
+    agent_player_id = init_config.get("agent_player_id","1")
 
     session_template = init_config.get("session_template","training-{:06d}-{:06d}")
     good_move_score = init_config.get("good_move_score",1)
