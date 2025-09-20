@@ -79,6 +79,7 @@ class T3DQNet(nn.Module):
 
 
 def load_model(model_dir:str, **kwargs):
+    is_inference = kwargs.get("is_inference", False)
     model_filename = path.join(model_dir, DEFAULT_MODEL_FILENAME)
     if path.exists(model_filename):
         model_config = torch.load(model_filename)
@@ -101,7 +102,6 @@ def load_model(model_dir:str, **kwargs):
                      relu_rate=kwargs.get("relu_rate", DEFAULT_RELU_RATE),
                      dropout_rate=kwargs.get("dropout_rate", DEFAULT_DROPOUT_RATE))
 
-    is_inference = kwargs.get("is_inference", False)
     ret_config = {}
     if not is_inference:
         training_filename = path.join(model_dir, DEFAULT_TRAINING_FILENAME)
