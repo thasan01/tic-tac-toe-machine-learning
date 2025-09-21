@@ -241,7 +241,7 @@ if __name__ == "__main__":
 
     dataset = T3DQLDataset(data_dir, "training-(.*).txt", exploration_rate=exploration_rate, exploration_decay=exploration_decay)
     loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=True)
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.SmoothL1Loss() # torch.nn.MSELoss()
 
     tb_log = SummaryWriter(logs_dir)
 
