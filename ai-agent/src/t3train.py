@@ -208,6 +208,8 @@ if __name__ == "__main__":
     exploration_rate = init_config.get("exploration_rate",1.0)
     exploration_decay = init_config.get("exploration_decay",0.9)
     policy_sync_rate = init_config.get("policy_sync_rate",10)
+    experience_replay = init_config.get("experience_replay",10)
+
 
     t3policy_dqn, t3config = load_model(model_dir, is_inference=False, num_input_nodes=num_input_nodes,
                                         num_hidden_layer_nodes=num_hidden_layer_nodes,
@@ -247,8 +249,9 @@ if __name__ == "__main__":
 
     # training loop
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
-    loss = t3config["loss"] if "loss" in t3config else 0
-    print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {loss}")
+    avg_loss = t3config["loss"] if "loss" in t3config else 0
+    print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
+
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
 
@@ -261,53 +264,61 @@ if __name__ == "__main__":
         if epoch % policy_sync_rate == 0:
             t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
 
-        for i, batch in enumerate(loader):
-            curr_state_idx, next_state_idx, curr_choice, reward, is_game_end = batch
+        total_loss = 0.0
+        num_batches = 0
 
-            # Move tensors to the GPU
-            curr_state_idx = curr_state_idx.to(device)
-            next_state_idx = next_state_idx.to(device)
-            curr_choice = curr_choice.to(device)
-            reward = reward.to(device)
-            is_game_end = is_game_end.to(device)
+        for er in range(experience_replay):
 
-            # Calculate predicted Q-values
-            curr_states = dataset.board_states[curr_state_idx]
-            policy_q_values = t3policy_dqn(curr_states)
-            predicted_q_values = policy_q_values.gather(1, curr_choice.unsqueeze(1)).squeeze(1)
+            for i, batch in enumerate(loader):
+                curr_state_idx, next_state_idx, curr_choice, reward, is_game_end = batch
 
-            # Calculate target Q-values
-            next_q_values = torch.zeros(predicted_q_values.size(), device=device)
+                # Move tensors to the GPU
+                curr_state_idx = curr_state_idx.to(device)
+                next_state_idx = next_state_idx.to(device)
+                curr_choice = curr_choice.to(device)
+                reward = reward.to(device)
+                is_game_end = is_game_end.to(device)
 
-            # Only calculate next Q-values for non-terminal states
-            non_terminal_indices = torch.where(~is_game_end)
-            if non_terminal_indices[0].size(0) > 0:
-                next_states = dataset.board_states[next_state_idx[non_terminal_indices]]
-                next_q_values_temp = t3target_dqn(next_states).detach()
-                max_next_q_values, _ = next_q_values_temp.max(dim=1)
-                next_q_values[non_terminal_indices] = max_next_q_values
+                # Calculate predicted Q-values
+                curr_states = dataset.board_states[curr_state_idx]
+                policy_q_values = t3policy_dqn(curr_states)
+                predicted_q_values = policy_q_values.gather(1, curr_choice.unsqueeze(1)).squeeze(1)
 
-            target_q_values = reward + discount_factor * next_q_values
-            target_q_values = target_q_values.float()
+                # Calculate target Q-values
+                next_q_values = torch.zeros(predicted_q_values.size(), device=device)
 
-            # Compute loss
-            loss = loss_fn(predicted_q_values, target_q_values)
+                # Only calculate next Q-values for non-terminal states
+                non_terminal_indices = torch.where(~is_game_end)
+                if non_terminal_indices[0].size(0) > 0:
+                    next_states = dataset.board_states[next_state_idx[non_terminal_indices]]
+                    next_q_values_temp = t3target_dqn(next_states).detach()
+                    max_next_q_values, _ = next_q_values_temp.max(dim=1)
+                    next_q_values[non_terminal_indices] = max_next_q_values
 
-            # Backward propagate and optimize
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                target_q_values = reward + discount_factor * next_q_values
+                target_q_values = target_q_values.float()
 
-        tb_log.add_scalar('Loss/train', loss.item(), epoch)
-        print(f"epoch: {epoch} loss: {loss}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
+                # Compute loss
+                loss = loss_fn(predicted_q_values, target_q_values)
+                total_loss += loss.item()
+                num_batches += 1
+
+                # Backward propagate and optimize
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+        avg_loss = total_loss / num_batches if num_batches > 0 else -1
+        tb_log.add_scalar('Loss/train', avg_loss, epoch)
+        print(f"epoch: {epoch} loss: {avg_loss}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
-        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
+        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
         requests.post(f"{server_base_url}/model/reload", json={})
 
     t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
-    save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
+    save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
 
     tb_log.close()
 
