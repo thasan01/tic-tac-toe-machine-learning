@@ -95,7 +95,7 @@ class T3DQLDataset(Dataset):
         self.board_states = []
         self.__reset_stats()
 
-        run_games(epoch, session_template, max_sessions, exploration_rate=self.exploration_rate)
+        run_games(epoch, session_template, max_sessions//2, exploration_rate=self.exploration_rate)
         self.exploration_rate *= self.exploration_decay
 
         if self.exploration_rate < 1e-6:
@@ -140,14 +140,22 @@ class T3DQLDataset(Dataset):
 
     def post_step(self):
         if self.delete_training_files:
+            file_count = 0
+            delete_rate = 2
+            files_to_delete = []
             for dir_path, dir_names, filenames in os.walk(self.root_dir):
                 for filename in filenames:
                     if self.file_pattern.match(filename):
-                        file_path = os.path.join(dir_path, filename)
-                        try:
-                            os.remove(file_path)
-                        except Exception as e:
-                            print(f"Error deleting file {file_path}: {e}")
+                        if file_count % delete_rate == 0:
+                            files_to_delete.append(os.path.join(dir_path, filename))
+                        file_count += 1
+
+            for filename in files_to_delete:
+                try:
+                    os.remove(filename)
+                except Exception as e:
+                    print(f"Error deleting file {filename}: {e}")
+
 
     def __scan_dir(self):
         files_to_scan = []
@@ -247,6 +255,9 @@ if __name__ == "__main__":
 
     tb_log = SummaryWriter(logs_dir)
 
+    # create the initial half sessions
+    run_games(-1, session_template, max_sessions // 2, exploration_rate=exploration_rate)
+
     # training loop
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
     avg_loss = t3config["loss"] if "loss" in t3config else 0
@@ -267,46 +278,44 @@ if __name__ == "__main__":
         total_loss = 0.0
         num_batches = 0
 
-        for er in range(experience_replay):
+        for i, batch in enumerate(loader):
+            curr_state_idx, next_state_idx, curr_choice, reward, is_game_end = batch
 
-            for i, batch in enumerate(loader):
-                curr_state_idx, next_state_idx, curr_choice, reward, is_game_end = batch
+            # Move tensors to the GPU
+            curr_state_idx = curr_state_idx.to(device)
+            next_state_idx = next_state_idx.to(device)
+            curr_choice = curr_choice.to(device)
+            reward = reward.to(device)
+            is_game_end = is_game_end.to(device)
 
-                # Move tensors to the GPU
-                curr_state_idx = curr_state_idx.to(device)
-                next_state_idx = next_state_idx.to(device)
-                curr_choice = curr_choice.to(device)
-                reward = reward.to(device)
-                is_game_end = is_game_end.to(device)
+            # Calculate predicted Q-values
+            curr_states = dataset.board_states[curr_state_idx]
+            policy_q_values = t3policy_dqn(curr_states)
+            predicted_q_values = policy_q_values.gather(1, curr_choice.unsqueeze(1)).squeeze(1)
 
-                # Calculate predicted Q-values
-                curr_states = dataset.board_states[curr_state_idx]
-                policy_q_values = t3policy_dqn(curr_states)
-                predicted_q_values = policy_q_values.gather(1, curr_choice.unsqueeze(1)).squeeze(1)
+            # Calculate target Q-values
+            next_q_values = torch.zeros(predicted_q_values.size(), device=device)
 
-                # Calculate target Q-values
-                next_q_values = torch.zeros(predicted_q_values.size(), device=device)
+            # Only calculate next Q-values for non-terminal states
+            non_terminal_indices = torch.where(~is_game_end)
+            if non_terminal_indices[0].size(0) > 0:
+                next_states = dataset.board_states[next_state_idx[non_terminal_indices]]
+                next_q_values_temp = t3target_dqn(next_states).detach()
+                max_next_q_values, _ = next_q_values_temp.max(dim=1)
+                next_q_values[non_terminal_indices] = max_next_q_values
 
-                # Only calculate next Q-values for non-terminal states
-                non_terminal_indices = torch.where(~is_game_end)
-                if non_terminal_indices[0].size(0) > 0:
-                    next_states = dataset.board_states[next_state_idx[non_terminal_indices]]
-                    next_q_values_temp = t3target_dqn(next_states).detach()
-                    max_next_q_values, _ = next_q_values_temp.max(dim=1)
-                    next_q_values[non_terminal_indices] = max_next_q_values
+            target_q_values = reward + discount_factor * next_q_values
+            target_q_values = target_q_values.float()
 
-                target_q_values = reward + discount_factor * next_q_values
-                target_q_values = target_q_values.float()
+            # Compute loss
+            loss = loss_fn(predicted_q_values, target_q_values)
+            total_loss += loss.item()
+            num_batches += 1
 
-                # Compute loss
-                loss = loss_fn(predicted_q_values, target_q_values)
-                total_loss += loss.item()
-                num_batches += 1
-
-                # Backward propagate and optimize
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            # Backward propagate and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
@@ -328,7 +337,5 @@ if __name__ == "__main__":
         t3server.shutdown_event.wait(timeout=60)
         # os.kill(os.getpid(), signal.SIGINT)
     finally:
-        try:
-            server_thread.join(timeout=60)
-        finally:
-            pass
+        try: server_thread.join(timeout=60)
+        finally: pass
