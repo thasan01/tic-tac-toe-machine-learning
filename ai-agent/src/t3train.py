@@ -273,6 +273,7 @@ if __name__ == "__main__":
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
     avg_loss = t3config["loss"] if "loss" in t3config else 0
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
+    avg_loss = None
 
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
@@ -338,8 +339,9 @@ if __name__ == "__main__":
         save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
         requests.post(f"{server_base_url}/model/reload", json={})
 
-    t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
-    save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
+    if avg_loss:
+        t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
+        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
 
     tb_log.close()
 
