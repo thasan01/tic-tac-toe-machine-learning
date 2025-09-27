@@ -55,9 +55,11 @@ def player_choice():
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():
-    shutdown_event.set()
-    return {"status": "Shutdown flag set"}
-
+    shutdown_event.set()  # Set the shutdown event
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is not None:
+        func()  # Call the shutdown function to stop the server
+    return {"status": "Server is shutting down."}
 
 if __name__ == '__main__':
     model_dir = "./data/model/t3"

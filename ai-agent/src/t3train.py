@@ -241,11 +241,13 @@ if __name__ == "__main__":
 
     # Server startup
     def run_webapp():
-        agent_dqn = T3DQNet(num_input_nodes, num_hidden_layer_nodes, num_output_nodes, relu_rate=relu_rate, dropout_rate=dropout_rate).to(device)
+        agent_dqn = T3DQNet(num_input_nodes, num_hidden_layer_nodes, num_output_nodes, relu_rate=relu_rate,
+                            dropout_rate=dropout_rate).to(device)
         agent_dqn.eval()
         t3server.model_dir = model_dir
         t3server.agent = t3server.Agent(agent_dqn)
-        t3server.app.run(host=server_host, port=server_port)
+        # Run the Flask app
+        t3server.app.run(host=server_host, port=server_port, use_reloader=False)
 
     server_thread = threading.Thread(target=run_webapp)
     server_thread.start()
@@ -347,9 +349,14 @@ if __name__ == "__main__":
 
     # Server shutdown
     try:
-        request_shutdown(server_base_url)
-        t3server.shutdown_event.wait(timeout=60)
-        # os.kill(os.getpid(), signal.SIGINT)
+        print("Sending shutdown request")
+        request_shutdown(server_base_url)  # Ensure this correctly calls the shutdown endpoint
+        print("Waiting for server to shutdown")
+        t3server.shutdown_event.wait(timeout=60)  # Wait for the shutdown event
     finally:
-        try: server_thread.join(timeout=60)
-        finally: sys.exit(0)
+        try:
+            print("Waiting for server thread to join")
+            server_thread.join(timeout=60)  # Wait for the server thread to finish
+        finally:
+            print("Exiting the script")
+            sys.exit(0)
