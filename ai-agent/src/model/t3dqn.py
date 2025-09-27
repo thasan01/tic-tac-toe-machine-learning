@@ -40,6 +40,7 @@ class T3DQNet(nn.Module):
             # Add subsequent hidden layers
             for i in range(len(num_hidden_layer_nodes) - 1):
                 layers.append(nn.Linear(num_hidden_layer_nodes[i], num_hidden_layer_nodes[i + 1]))
+                layers.append(nn.BatchNorm1d(num_hidden_layer_nodes[i + 1]))
                 layers.append(nn.LeakyReLU(self.relu_rate))
                 layers.append(nn.Dropout(self.dropout_rate))
 
@@ -112,6 +113,7 @@ def load_model(model_dir:str, **kwargs):
             if "loss" in training_config: ret_config["loss"] = training_config["loss"]
             if "exploration_rate" in training_config: ret_config["exploration_rate"] = training_config["exploration_rate"]
             if "exploration_decay" in training_config: ret_config["exploration_decay"] = training_config["exploration_decay"]
+            if "experience_replay" in training_config: ret_config["experience_replay"] = training_config["experience_replay"]
 
     model = model.to(device)
     return model, ret_config
@@ -133,46 +135,7 @@ def save_model_checkpoint(model_dir:str, model:T3DQNet, **kwargs):
         "epoch": kwargs.get("epoch", 0),
         "loss": kwargs.get("loss", None),
         "exploration_rate": kwargs.get("exploration_rate"),
-        "exploration_decay": kwargs.get("exploration_decay")
+        "exploration_decay": kwargs.get("exploration_decay"),
+        "experience_replay": kwargs.get("experience_replay")
     }
     torch.save(training_config, path.join(model_dir, DEFAULT_TRAINING_FILENAME))
-
-if __name__ == "__main__":
-    num_batches = 1
-    num_input_nodes = 30
-    num_hidden_layer_nodes = [128, 256, 512, 256, 128]
-    num_output_nodes = 9
-
-    # --- FIX 1: Change dtype to float32 ---
-    # The torch.randn() function generates floating-point numbers.
-    # We must set the data type to a floating-point type like torch.float32.
-    input_tensor = torch.randn(num_batches, num_input_nodes, dtype=torch.float32)
-
-    # --- FIX 2: Create a proper target tensor ---
-    # Targets for CrossEntropyLoss should be integer labels, not random floats.
-    # The labels represent the correct action (0-8).
-    expected_output_labels = torch.randint(0, num_output_nodes, (num_batches,))
-    print(f"expected_output_labels: {expected_output_labels}")
-
-    model_dir = "../../data/model/t3"
-    t3model, t3config = load_model(model_dir,
-            num_input_nodes=num_input_nodes,
-            num_hidden_layer_nodes = num_hidden_layer_nodes,
-            num_output_nodes = num_output_nodes
-        )
-
-    # The model's raw output (logits) is used directly for CrossEntropyLoss
-    out_q_values = t3model(input_tensor)
-
-    # --- FIX 3: Use the correct loss function ---
-    # For a multi-class problem like Tic-Tac-Toe with 9 outputs,
-    # nn.CrossEntropyLoss is the correct choice and is more stable.
-    # It automatically applies softmax and calculates the log-likelihood loss.
-    loss_func = nn.CrossEntropyLoss()
-    loss = loss_func(out_q_values, expected_output_labels)
-
-    save_model_checkpoint(model_dir, t3model)
-
-    print(f"out_q_values (logits):\n{out_q_values}")
-    print(f"choice: {torch.argmax(out_q_values)}")
-    print(f"loss: {loss.item()}")

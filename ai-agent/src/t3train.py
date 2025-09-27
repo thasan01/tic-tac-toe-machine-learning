@@ -10,6 +10,7 @@ import signal
 import threading
 import subprocess
 import requests
+import random
 import torch
 from torch import optim
 from torch.utils.data import Dataset, DataLoader
@@ -61,7 +62,7 @@ def onehot_encode_state(action, player_id:int):
 
 
 class T3DQLDataset(Dataset):
-    def __init__(self, root_dir: str, file_expression: str = ".*", delete_training_files=True, exploration_rate=0.0, exploration_decay = 0.0):
+    def __init__(self, root_dir: str, file_expression: str = ".*", delete_training_files=True, exploration_rate=0.0, exploration_decay = 0.0, experience_replay = 0.5):
         self.delete_training_files = delete_training_files
         self.root_dir = root_dir
         self.file_pattern = re.compile(file_expression)
@@ -70,6 +71,8 @@ class T3DQLDataset(Dataset):
         self.stats = {}
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
+        self.experience_replay = experience_replay
+        self.new_sessions = int(max_sessions *  (1 - experience_replay))
 
     def __reset_stats(self):
         self.stats = {"p1_wins": 0, "p2_wins": 0, "draws": 0, "p1_dqs": 0, "p2_dqs": 0}
@@ -95,7 +98,7 @@ class T3DQLDataset(Dataset):
         self.board_states = []
         self.__reset_stats()
 
-        run_games(epoch, session_template, max_sessions//2, exploration_rate=self.exploration_rate)
+        run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
         self.exploration_rate *= self.exploration_decay
 
         if self.exploration_rate < 1e-6:
@@ -140,15 +143,22 @@ class T3DQLDataset(Dataset):
 
     def post_step(self):
         if self.delete_training_files:
-            file_count = 0
-            delete_rate = 2
             files_to_delete = []
+            files_to_keep = []
+
+            # Collect all files that match the pattern
             for dir_path, dir_names, filenames in os.walk(self.root_dir):
                 for filename in filenames:
                     if self.file_pattern.match(filename):
-                        if file_count % delete_rate == 0:
-                            files_to_delete.append(os.path.join(dir_path, filename))
-                        file_count += 1
+                        files_to_keep.append(os.path.join(dir_path, filename))
+
+            # Calculate the number of files to delete based on experience_replay
+            total_files = len(files_to_keep)
+            keep_count = int(total_files * self.experience_replay)
+            delete_count = total_files - keep_count
+
+            # Randomly select files to delete
+            files_to_delete = random.sample(files_to_keep, delete_count)
 
             for filename in files_to_delete:
                 try:
@@ -216,7 +226,7 @@ if __name__ == "__main__":
     exploration_rate = init_config.get("exploration_rate",1.0)
     exploration_decay = init_config.get("exploration_decay",0.9)
     policy_sync_rate = init_config.get("policy_sync_rate",10)
-    experience_replay = init_config.get("experience_replay",10)
+    experience_replay = init_config.get("experience_replay",0.5)
 
 
     t3policy_dqn, t3config = load_model(model_dir, is_inference=False, num_input_nodes=num_input_nodes,
@@ -249,14 +259,14 @@ if __name__ == "__main__":
     if "exploration_decay" in t3config:
         exploration_decay = t3config["exploration_decay"]
 
-    dataset = T3DQLDataset(data_dir, "training-(.*).txt", exploration_rate=exploration_rate, exploration_decay=exploration_decay)
+    dataset = T3DQLDataset(data_dir, "training-(.*).txt", exploration_rate=exploration_rate, exploration_decay=exploration_decay, experience_replay=experience_replay)
     loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=True)
     loss_fn = torch.nn.SmoothL1Loss() # torch.nn.MSELoss()
 
     tb_log = SummaryWriter(logs_dir)
 
     # create the initial half sessions
-    run_games(-1, session_template, max_sessions // 2, exploration_rate=exploration_rate)
+    run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate)
 
     # training loop
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
@@ -315,6 +325,7 @@ if __name__ == "__main__":
             # Backward propagate and optimize
             optimizer.zero_grad()
             loss.backward()
+            torch.nn.utils.clip_grad_value_(t3policy_dqn.parameters(), 100)
             optimizer.step()
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
@@ -323,11 +334,11 @@ if __name__ == "__main__":
 
         dataset.post_step()
 
-        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
+        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
         requests.post(f"{server_base_url}/model/reload", json={})
 
     t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
-    save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay)
+    save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
 
     tb_log.close()
 
