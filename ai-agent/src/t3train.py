@@ -242,6 +242,7 @@ if __name__ == "__main__":
     # Server startup
     def run_webapp():
         agent_dqn = T3DQNet(num_input_nodes, num_hidden_layer_nodes, num_output_nodes, relu_rate=relu_rate, dropout_rate=dropout_rate).to(device)
+        agent_dqn.eval()
         t3server.model_dir = model_dir
         t3server.agent = t3server.Agent(agent_dqn)
         t3server.app.run(host=server_host, port=server_port)
