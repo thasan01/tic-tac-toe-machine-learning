@@ -42,14 +42,12 @@ def request_shutdown(base_url: str):
     requests.post(api_url)
 
 
-def run_games(epoch, session_template, max_sessions, exploration_rate, agent_player_id):
-
+def run_games(epoch, session_template, max_sessions, exploration_rate):
+    global agent_player_id
     players = [p1_profile, p2_profile]
 
-    if swap_players:
-        agent_player_id = (agent_player_id % 2) + 1
-        if epoch % 2 == 0:
-            players = [p2_profile, p1_profile]
+    if swap_players and epoch % 2 == 0:
+        players = [p2_profile, p1_profile]
 
     for i in range(max_sessions):
         session = session_template.format(epoch, i)
@@ -61,6 +59,9 @@ def run_games(epoch, session_template, max_sessions, exploration_rate, agent_pla
             capture_output=True,
             text=True
         )
+
+    if swap_players:
+        agent_player_id = (agent_player_id % 2) + 1
 
 
 def onehot_encode_state(action, player_id:int):
@@ -106,7 +107,7 @@ class T3DQLDataset(Dataset):
         self.board_states = []
         self.__reset_stats()
 
-        run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate, agent_player_id=agent_player_id)
+        run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
         self.exploration_rate *= self.exploration_decay
 
         if self.exploration_rate < 1e-6:
@@ -277,7 +278,7 @@ if __name__ == "__main__":
     tb_log = SummaryWriter(logs_dir)
 
     # create the initial half sessions
-    run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate, agent_player_id=agent_player_id)
+    run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate)
 
     # training loop
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
