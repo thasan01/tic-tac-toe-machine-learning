@@ -3,25 +3,27 @@
     "server_port": 5000,
 
     "num_input_nodes": 30,
-    "num_hidden_layer_nodes": [128, 256, 512, 256, 128],
+    "num_hidden_layer_nodes": [64, 128, 256, 512, 256, 128, 64],
     "num_output_nodes": 9,
     "relu_rate": 0.1,
     "dropout_rate": 0.1,
 
     "max_epochs": 100,
-    "learn_rate": 1e-6,
-    "batch_size": 500,
+    "learn_rate": 1e-4,
+    "batch_size": 512,
     "max_sessions": 500,
-    "policy_sync_rate": 10,
+    "policy_sync_rate": 5,
+    "experience_replay": 0.75,
+    "swap_players": false,
 
     "session_template": "training-{:06d}-{:06d}",
     "good_move_score": 1,
-    "invalid_move_score": -10,
-    "default_move_score": -0.1,
-    "discount_factor": 0.9,
-    "p1_profile": "rl-agent",
-    "p2_profile": "heuristic-agent",
-    "agent_player_id" : 1,
+    "invalid_move_score": -1,
+    "default_move_score": -0.01,
+    "discount_factor": 0.95,
+    "p1_profile": "heuristic-agent",
+    "p2_profile": "rl-agent",
+    "agent_player_id": 2,
     "exploration_rate": 1.0,
-    "exploration_decay": 0.9
+    "exploration_decay": 0.99
 }

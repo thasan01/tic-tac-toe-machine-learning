@@ -42,13 +42,21 @@ def request_shutdown(base_url: str):
     requests.post(api_url)
 
 
-def run_games(epoch, session_template, max_sessions, exploration_rate):
+def run_games(epoch, session_template, max_sessions, exploration_rate, agent_player_id):
+
+    players = [p1_profile, p2_profile]
+
+    if swap_players:
+        agent_player_id = (agent_player_id % 2) + 1
+        if epoch % 2 == 0:
+            players = [p2_profile, p1_profile]
+
     for i in range(max_sessions):
         session = session_template.format(epoch, i)
 
         subprocess.run(
-            "node ./game/build/tic-tac-toe.console.js rl-agent random-agent --outdir {} --suppressOutput --sessionName {} --encoder OneHotEncoder --explorationRate {}".format(
-                data_dir, session, exploration_rate),
+            "node ./game/build/tic-tac-toe.console.js {} {} --outdir {} --suppressOutput --sessionName {} --encoder OneHotEncoder --explorationRate {}".format(
+                players[0], players[1],data_dir, session, exploration_rate),
             shell=True,
             capture_output=True,
             text=True
@@ -98,7 +106,7 @@ class T3DQLDataset(Dataset):
         self.board_states = []
         self.__reset_stats()
 
-        run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
+        run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate, agent_player_id=agent_player_id)
         self.exploration_rate *= self.exploration_decay
 
         if self.exploration_rate < 1e-6:
@@ -217,6 +225,7 @@ if __name__ == "__main__":
     p1_profile = init_config.get("p1_profile","rl-agent")
     p2_profile = init_config.get("p2_profile","random-agent")
     agent_player_id = init_config.get("agent_player_id","1")
+    swap_players = init_config.get("swap_players", False)
 
     session_template = init_config.get("session_template","training-{:06d}-{:06d}")
     good_move_score = init_config.get("good_move_score",1)
@@ -227,7 +236,6 @@ if __name__ == "__main__":
     exploration_decay = init_config.get("exploration_decay",0.9)
     policy_sync_rate = init_config.get("policy_sync_rate",10)
     experience_replay = init_config.get("experience_replay",0.5)
-
 
     t3policy_dqn, t3config = load_model(model_dir, is_inference=False, num_input_nodes=num_input_nodes,
                                         num_hidden_layer_nodes=num_hidden_layer_nodes,
@@ -269,7 +277,7 @@ if __name__ == "__main__":
     tb_log = SummaryWriter(logs_dir)
 
     # create the initial half sessions
-    run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate)
+    run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate, agent_player_id=agent_player_id)
 
     # training loop
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
@@ -359,4 +367,4 @@ if __name__ == "__main__":
             server_thread.join(timeout=60)  # Wait for the server thread to finish
         finally:
             print("Exiting the script")
-            sys.exit(0)
+            os._exit(os.EX_OK)
