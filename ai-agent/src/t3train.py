@@ -352,4 +352,4 @@ if __name__ == "__main__":
         # os.kill(os.getpid(), signal.SIGINT)
     finally:
         try: server_thread.join(timeout=60)
-        finally: pass
+        finally: sys.exit(0)
