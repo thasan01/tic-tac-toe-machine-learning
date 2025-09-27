@@ -87,11 +87,10 @@ class T3DQLDataset(Dataset):
         self.stats = {"p1_wins": 0, "p2_wins": 0, "draws": 0, "p1_dqs": 0, "p2_dqs": 0}
 
     def __calculate_session_stats(self, winner, status_msg):
-        if winner == 0:
+        if winner is None:
             if "draw" in status_msg:
                 self.stats["draws"] += 1
-        elif winner is None:
-            if status_msg == "Player1 disqualified!":
+            elif status_msg == "Player1 disqualified!":
                 self.stats["p1_dqs"] += 1
             elif status_msg == "Player2 disqualified!":
                 self.stats["p2_dqs"] += 1
