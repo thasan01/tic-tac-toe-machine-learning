@@ -117,7 +117,7 @@ class T3DQLDataset(Dataset):
         self.exploration_rate = self.init_exploration_rate * (1.0 / (1.0 + tau * t))
 
         if self.exploration_rate < 1e-6:
-            self.exploration_rate = 0.0
+            self.exploration_rate = self.init_exploration_rate
 
         files_to_scan = self.__scan_dir()
         for filename in files_to_scan:
@@ -300,7 +300,6 @@ if __name__ == "__main__":
 
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
-        scheduler.step()
 
         tb_log.add_scalars('Stats', {
             'P1 Wins': dataset.stats["p1_wins"],
@@ -353,6 +352,8 @@ if __name__ == "__main__":
             loss.backward()
             torch.nn.utils.clip_grad_value_(t3policy_dqn.parameters(), 100)
             optimizer.step()
+
+        scheduler.step()
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
