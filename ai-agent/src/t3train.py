@@ -349,7 +349,8 @@ if __name__ == "__main__":
             torch.nn.utils.clip_grad_value_(t3policy_dqn.parameters(), 100)
             optimizer.step()
 
-        scheduler.step()
+        if epoch > init_epoch or init_epoch == 0:
+            scheduler.step()
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
