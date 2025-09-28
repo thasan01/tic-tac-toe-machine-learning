@@ -12,7 +12,6 @@ import subprocess
 import requests
 import random
 import torch
-from torch.optim.lr_scheduler import LambdaLR
 from torch import optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -79,7 +78,6 @@ class T3DQLDataset(Dataset):
         self.memories = [None] # Added single element to bypass the dataloader
         self.board_states = []
         self.stats = {}
-        self.init_exploration_rate = exploration_rate
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
         self.experience_replay = experience_replay
@@ -109,15 +107,10 @@ class T3DQLDataset(Dataset):
         self.__reset_stats()
 
         run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
-
-        #self.exploration_rate *= self.exploration_decay # Use dynamic rates instead
-        t = epoch + init_epoch + 1  # Use initial epoch if resuming training
-        tau = self.exploration_decay
-
-        self.exploration_rate = self.init_exploration_rate * (1.0 / (1.0 + tau * t))
+        self.exploration_rate *= self.exploration_decay
 
         if self.exploration_rate < 1e-6:
-            self.exploration_rate = self.init_exploration_rate
+            self.exploration_rate = 0.0
 
         files_to_scan = self.__scan_dir()
         for filename in files_to_scan:
@@ -292,8 +285,6 @@ if __name__ == "__main__":
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
     avg_loss = None
 
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
-
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
 
@@ -349,12 +340,9 @@ if __name__ == "__main__":
             torch.nn.utils.clip_grad_value_(t3policy_dqn.parameters(), 100)
             optimizer.step()
 
-        if epoch > init_epoch or init_epoch == 0:
-            scheduler.step()
-
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
-        print(f"epoch: {epoch} loss: {avg_loss}, exp_rate: {dataset.exploration_rate}, learn_rate: {optimizer.param_groups[0]['lr']}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
+        print(f"epoch: {epoch} loss: {avg_loss}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
