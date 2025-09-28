@@ -292,11 +292,7 @@ if __name__ == "__main__":
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
     avg_loss = None
 
-    def sa_decay_factor(epoch):
-        # Add 1 to epoch to prevent division by zero at epoch 0
-        return 1.0 / (1.0 + exploration_decay * (epoch + init_epoch))
-
-    scheduler = LambdaLR(optimizer, lr_lambda=sa_decay_factor)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
