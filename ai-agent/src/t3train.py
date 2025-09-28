@@ -12,6 +12,7 @@ import subprocess
 import requests
 import random
 import torch
+from torch.optim.lr_scheduler import LambdaLR
 from torch import optim
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -78,6 +79,7 @@ class T3DQLDataset(Dataset):
         self.memories = [None] # Added single element to bypass the dataloader
         self.board_states = []
         self.stats = {}
+        self.init_exploration_rate = exploration_rate
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
         self.experience_replay = experience_replay
@@ -107,7 +109,12 @@ class T3DQLDataset(Dataset):
         self.__reset_stats()
 
         run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
-        self.exploration_rate *= self.exploration_decay
+
+        #self.exploration_rate *= self.exploration_decay # Use dynamic rates instead
+        t = epoch + init_epoch + 1  # Use initial epoch if resuming training
+        tau = self.exploration_decay
+
+        self.exploration_rate = self.init_exploration_rate * (1.0 / (1.0 + tau * t))
 
         if self.exploration_rate < 1e-6:
             self.exploration_rate = 0.0
@@ -285,8 +292,15 @@ if __name__ == "__main__":
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
     avg_loss = None
 
+    def sa_decay_factor(epoch):
+        # Add 1 to epoch to prevent division by zero at epoch 0
+        return 1.0 / (1.0 + exploration_decay * (epoch + init_epoch))
+
+    scheduler = LambdaLR(optimizer, lr_lambda=sa_decay_factor)
+
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
+        scheduler.step()
 
         tb_log.add_scalars('Stats', {
             'P1 Wins': dataset.stats["p1_wins"],
@@ -342,7 +356,7 @@ if __name__ == "__main__":
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
-        print(f"epoch: {epoch} loss: {avg_loss}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
+        print(f"epoch: {epoch} loss: {avg_loss}, exp_rate: {dataset.exploration_rate}, learn_rate: {optimizer.param_groups[0]['lr']}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
