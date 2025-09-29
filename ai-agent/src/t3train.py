@@ -292,7 +292,8 @@ if __name__ == "__main__":
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
     avg_loss = None
 
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.01)
+    base_lean_rate = (learn_rate * (10^-2) )
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=base_lean_rate, max_lr=learn_rate) #optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.01)
 
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
