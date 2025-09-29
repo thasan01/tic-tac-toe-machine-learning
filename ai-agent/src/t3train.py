@@ -291,6 +291,8 @@ if __name__ == "__main__":
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
     avg_loss = None
 
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.01)
+
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
 
@@ -349,6 +351,8 @@ if __name__ == "__main__":
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
         print(f"epoch: {epoch} loss: {avg_loss}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
+
+        scheduler.step()
 
         dataset.post_step()
 
