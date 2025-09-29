@@ -352,8 +352,6 @@ if __name__ == "__main__":
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
         print(f"epoch: {epoch} loss: {avg_loss}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
-        scheduler.step()
-
         dataset.post_step()
 
         save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
