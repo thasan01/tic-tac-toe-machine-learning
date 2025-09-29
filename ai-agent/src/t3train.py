@@ -109,12 +109,13 @@ class T3DQLDataset(Dataset):
         run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
         self.exploration_rate *= self.exploration_decay
 
-        exp_rate_range = [0.001, 0.9] #[min_value, max_value]
+        exp_rate_range = [0.01, 1.0] #[min_value, max_value]
         if self.exploration_rate < exp_rate_range[0]:
             self.exploration_rate = exp_rate_range[0]
             self.exploration_decay = 1 / self.exploration_decay
 
         if self.exploration_rate > exp_rate_range[1]:
+            exp_rate_range[1] = 1 - (epoch / max_epochs)
             self.exploration_rate = exp_rate_range[1]
             self.exploration_decay = 1 / self.exploration_decay
 
@@ -291,7 +292,7 @@ if __name__ == "__main__":
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
     avg_loss = None
 
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.01)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.01)
 
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
@@ -347,6 +348,8 @@ if __name__ == "__main__":
             loss.backward()
             torch.nn.utils.clip_grad_value_(t3policy_dqn.parameters(), 100)
             optimizer.step()
+
+        scheduler.step()
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
