@@ -293,7 +293,7 @@ if __name__ == "__main__":
     avg_loss = None
 
     base_lean_rate = (learn_rate * (10^-2) )
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=base_lean_rate, max_lr=learn_rate, step_size=500, mode='triangular2') #optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.01)
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=base_lean_rate, max_lr=learn_rate, mode='triangular2', step_size_up= 500, step_size_down= 500) #optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.01)
 
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
