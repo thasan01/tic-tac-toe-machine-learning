@@ -200,7 +200,7 @@ class T3DQLDataset(Dataset):
 
 def archive_func_generator(src_dir, dest_dir):
     if dest_dir:
-        return lambda src, dest: shutil.copytree(src_dir, dest_dir)
+        return lambda src, dest: shutil.copytree(src_dir, dest_dir, dirs_exist_ok=True)
     else:
         return lambda src, dest: None
 
@@ -212,12 +212,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     _, data_dir, logs_dir, model_dir = sys.argv[:4]
-    archive_dir = sys.argv[4] if len(sys.argv) < 5 else None
+    archive_dir = sys.argv[4] if len(sys.argv) >= 5 else None
     archive_model = archive_func_generator(model_dir, archive_dir)
 
 
     # contains all the values for initial training
-    init_config_filename = sys.argv[4] if len(sys.argv) >= 5 else "./ai-agent/data/init_train_config.json"
+    init_config_filename = sys.argv[6] if len(sys.argv) >= 6 else "./ai-agent/data/init_train_config.json"
     with open(init_config_filename) as file:
         init_config = json.load(file)
 
@@ -284,6 +284,10 @@ if __name__ == "__main__":
     if "optimizer_state" in t3config and t3config["optimizer_state"]:
         optimizer.load_state_dict(t3config["optimizer_state"])
 
+    for group in optimizer.param_groups:
+        group['initial_lr'] = group['lr']  # Set initial_lr to the current learning rate
+
+
     if "exploration_rate" in t3config:
         exploration_rate = t3config["exploration_rate"]
 
@@ -302,11 +306,6 @@ if __name__ == "__main__":
     scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=min_lr, max_lr=max_lr, mode='triangular2', step_size_up= learn_step_size, last_epoch=learn_step_size - 1)
     if "scheduler_state" in t3config:
         scheduler.load_state_dict(t3config["scheduler_state"])
-
-    # Manually set 'initial_lr' for each parameter group.
-    # This tells the scheduler what the original LR was for resuming.
-    for group in optimizer.param_groups:
-        group['initial_lr'] = group['lr']
 
     # training loop
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
@@ -374,7 +373,7 @@ if __name__ == "__main__":
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
-        print(f"epoch: {epoch} loss: {avg_loss}, learn_rate: {scheduler.get_last_lr()[0]}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
+        print(f"epoch: {epoch} loss: {avg_loss}, learn_rate: {scheduler.get_last_lr()[0]:.2e}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
