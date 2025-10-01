@@ -11,6 +11,7 @@ import threading
 import subprocess
 import requests
 import random
+import shutil
 import torch
 from torch import optim
 from torch.utils.data import Dataset, DataLoader
@@ -197,6 +198,11 @@ class T3DQLDataset(Dataset):
     def __getitem__(self, idx):
         return self.memories[idx]
 
+def archive_func_generator(src_dir, dest_dir):
+    if dest_dir:
+        return lambda src, dest: shutil.copytree(src_dir, dest_dir)
+    else:
+        return lambda src, dest: None
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -204,8 +210,11 @@ if __name__ == "__main__":
     if len(sys.argv) < 4:
         print("Script is missing required input args")
         sys.exit(1)
-    else:
-        _, data_dir, logs_dir, model_dir = sys.argv
+
+    _, data_dir, logs_dir, model_dir = sys.argv[:4]
+    archive_dir = sys.argv[4] if len(sys.argv) < 5 else None
+    archive_model = archive_func_generator(model_dir, archive_dir)
+
 
     # contains all the values for initial training
     init_config_filename = sys.argv[4] if len(sys.argv) >= 5 else "./ai-agent/data/init_train_config.json"
@@ -225,7 +234,8 @@ if __name__ == "__main__":
 
     # training params
     max_epochs = init_config.get("max_epochs",500)
-    learn_rate = init_config.get("learn_rate",1e-6)
+    learn_rate_range = init_config.get("learn_rate_range",[1e-3, 1e-6])
+    learn_step_size = init_config.get("learn_step_size", 500)
     batch_size = init_config.get("batch_size",500)
     max_sessions = init_config.get("max_sessions",500)
 
@@ -233,6 +243,7 @@ if __name__ == "__main__":
     p2_profile = init_config.get("p2_profile","random-agent")
     agent_player_id = init_config.get("agent_player_id","1")
     swap_players = init_config.get("swap_players", False)
+    archive_rate = init_config.get("archive_rate", 5)
 
     session_template = init_config.get("session_template","training-{:06d}-{:06d}")
     good_move_score = init_config.get("good_move_score",1)
@@ -243,6 +254,8 @@ if __name__ == "__main__":
     exploration_decay = init_config.get("exploration_decay",0.9)
     policy_sync_rate = init_config.get("policy_sync_rate",10)
     experience_replay = init_config.get("experience_replay",0.5)
+
+    min_lr, max_lr = learn_rate_range
 
     t3policy_dqn, t3config = load_model(model_dir, is_inference=False, num_input_nodes=num_input_nodes,
                                         num_hidden_layer_nodes=num_hidden_layer_nodes,
@@ -267,7 +280,7 @@ if __name__ == "__main__":
     server_thread = threading.Thread(target=run_webapp)
     server_thread.start()
 
-    optimizer = optim.Adam(t3policy_dqn.parameters(), lr=learn_rate)
+    optimizer = optim.Adam(t3policy_dqn.parameters(), lr=max_lr)
     if "optimizer_state" in t3config and t3config["optimizer_state"]:
         optimizer.load_state_dict(t3config["optimizer_state"])
 
@@ -286,14 +299,21 @@ if __name__ == "__main__":
     # create the initial half sessions
     run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate)
 
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=min_lr, max_lr=max_lr, mode='triangular2', step_size_up= learn_step_size, last_epoch=learn_step_size - 1)
+    if "scheduler_state" in t3config:
+        scheduler.load_state_dict(t3config["scheduler_state"])
+
+    # Manually set 'initial_lr' for each parameter group.
+    # This tells the scheduler what the original LR was for resuming.
+    for group in optimizer.param_groups:
+        group['initial_lr'] = group['lr']
+
     # training loop
     init_epoch = t3config["epoch"] if "epoch" in t3config else 0
     avg_loss = t3config["loss"] if "loss" in t3config else 0
+
     print(f"Starting training. init_epoch: {init_epoch}, max_epochs: {max_epochs}, loss: {avg_loss}")
     avg_loss = None
-
-    base_lean_rate = learn_rate / 100
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=base_lean_rate, max_lr=learn_rate, mode='triangular2', step_size_up= 500, step_size_down= 500) #optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.01)
 
     for epoch in range(init_epoch, max_epochs):
         dataset.pre_step(epoch)
@@ -358,12 +378,16 @@ if __name__ == "__main__":
 
         dataset.post_step()
 
-        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
+        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=epoch, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay, scheduler_state=scheduler.state_dict())
         requests.post(f"{server_base_url}/model/reload", json={})
+
+        if epoch % archive_rate == 0:
+            archive_model(model_dir, archive_dir)
 
     if avg_loss:
         t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
-        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay)
+        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay, scheduler_state=scheduler.state_dict())
+        archive_model(model_dir, archive_dir)
 
     tb_log.close()
 

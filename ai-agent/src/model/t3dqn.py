@@ -114,6 +114,7 @@ def load_model(model_dir:str, **kwargs):
             if "exploration_rate" in training_config: ret_config["exploration_rate"] = training_config["exploration_rate"]
             if "exploration_decay" in training_config: ret_config["exploration_decay"] = training_config["exploration_decay"]
             if "experience_replay" in training_config: ret_config["experience_replay"] = training_config["experience_replay"]
+            if "scheduler_state" in training_config: ret_config["scheduler_state"] = training_config["scheduler_state"]
 
     model = model.to(device)
     return model, ret_config
@@ -136,6 +137,7 @@ def save_model_checkpoint(model_dir:str, model:T3DQNet, **kwargs):
         "loss": kwargs.get("loss", None),
         "exploration_rate": kwargs.get("exploration_rate"),
         "exploration_decay": kwargs.get("exploration_decay"),
-        "experience_replay": kwargs.get("experience_replay")
+        "experience_replay": kwargs.get("experience_replay"),
+        "scheduler_state": kwargs.get("scheduler_state"),
     }
     torch.save(training_config, path.join(model_dir, DEFAULT_TRAINING_FILENAME))
