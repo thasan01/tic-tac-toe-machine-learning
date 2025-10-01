@@ -110,7 +110,7 @@ class T3DQLDataset(Dataset):
         run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
         self.exploration_rate *= self.exploration_decay
 
-        exp_rate_range = [0.01, 1.0] #[min_value, max_value]
+
         if self.exploration_rate < exp_rate_range[0]:
             self.exploration_rate = exp_rate_range[0]
             self.exploration_decay = 1 / self.exploration_decay
@@ -256,6 +256,7 @@ if __name__ == "__main__":
     experience_replay = init_config.get("experience_replay",0.5)
 
     min_lr, max_lr = learn_rate_range
+    exp_rate_range = [0.01, 1.0]  # [min_value, max_value]
 
     t3policy_dqn, t3config = load_model(model_dir, is_inference=False, num_input_nodes=num_input_nodes,
                                         num_hidden_layer_nodes=num_hidden_layer_nodes,
