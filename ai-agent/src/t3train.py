@@ -353,7 +353,9 @@ if __name__ == "__main__":
             if non_terminal_indices[0].size(0) > 0:
                 next_states = dataset.board_states[next_state_idx[non_terminal_indices]]
                 next_q_values_temp = t3target_dqn(next_states).detach()
-                max_next_q_values, _ = next_q_values_temp.max(dim=1)
+                #max_next_q_values, _ = next_q_values_temp.max(dim=1) # Single DQN
+                policy_next_actions = t3policy_dqn(next_states).argmax(dim=1) # Double DQN
+                max_next_q_values = next_q_values_temp.gather(1, policy_next_actions.unsqueeze(1)).squeeze(1)
                 next_q_values[non_terminal_indices] = max_next_q_values
 
             target_q_values = reward + discount_factor * next_q_values
