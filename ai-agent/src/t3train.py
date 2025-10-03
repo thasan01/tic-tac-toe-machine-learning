@@ -110,14 +110,14 @@ class T3DQLDataset(Dataset):
         run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
         self.exploration_rate *= self.exploration_decay
 
-
         if self.exploration_rate < exp_rate_range[0]:
-            self.exploration_rate = exp_rate_range[0]
+            ratio = (epoch / max_epochs)
+            exp_rate_range[1] = min(exp_rate_range[1], ratio)
             self.exploration_decay = 1 / self.exploration_decay
 
         if self.exploration_rate > exp_rate_range[1]:
-            exp_rate_range[1] = 1 - (epoch / max_epochs)
-            self.exploration_rate = exp_rate_range[1]
+            ratio = 1 - (epoch / max_epochs)
+            exp_rate_range[0] = min(exp_rate_range[0], ratio)
             self.exploration_decay = 1 / self.exploration_decay
 
         files_to_scan = self.__scan_dir()
