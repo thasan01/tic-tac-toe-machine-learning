@@ -111,12 +111,12 @@ class T3DQLDataset(Dataset):
         self.exploration_rate *= self.exploration_decay
 
         if self.exploration_rate < exp_rate_range[0]:
-            ratio = (epoch / max_epochs)
+            ratio = 1 - (epoch / max_epochs)
             exp_rate_range[1] = min(exp_rate_range[1], ratio)
             self.exploration_decay = 1 / self.exploration_decay
 
         if self.exploration_rate > exp_rate_range[1]:
-            ratio = 1 - (epoch / max_epochs)
+            ratio = (epoch / max_epochs)
             exp_rate_range[0] = min(exp_rate_range[0], ratio)
             self.exploration_decay = 1 / self.exploration_decay
 
