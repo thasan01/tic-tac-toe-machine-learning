@@ -15,6 +15,7 @@
     "max_sessions": 500,
     "policy_sync_rate": 5,
     "experience_replay": 0.75,
+    "experience_retain_dist" : [0.8, 0.1, 0.1],
     "archive_rate": 5,
 
 

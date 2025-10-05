@@ -18,7 +18,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import src.server.t3server as t3server
 from src.model.t3dqn import T3DQNet, load_model, save_model_checkpoint
-
+from src.distribution import sample_dist
 
 def wait_for_server(base_url):
     url = f"{base_url}/ping"
@@ -86,7 +86,8 @@ class T3DQLDataset(Dataset):
         self.exp_rate_range = [0.01, 1.0]
 
     def __reset_stats(self):
-        self.stats = {"p1_wins": 0, "p2_wins": 0, "draws": 0, "p1_dqs": 0, "p2_dqs": 0}
+        # self.stats = {"p1_wins": 0, "p2_wins": 0, "draws": 0, "p1_dqs": 0, "p2_dqs": 0}
+        self.stats = {"wins": 0, ";losses": 0, "draws": 0, "sessions": [[],[],[]]}
 
     def __calculate_session_stats(self, winner, status_msg):
         if winner is None:
@@ -102,6 +103,20 @@ class T3DQLDataset(Dataset):
             self.stats["p2_wins"] += 1
         return
 
+    def __calculate_session_stats_for_player(self, player_id, winner, status_msg, filename):
+        if winner is None:
+            if "draw" in status_msg:
+                self.stats["draws"] += 1
+                self.stats["sessions"][1].append(filename)
+        elif winner == player_id:
+            self.stats["wins"] += 1
+            self.stats["sessions"][0].append(filename)
+        else:
+            self.stats["losses"] += 1
+            self.stats["sessions"][2].append(filename)
+        return
+
+
     def pre_step(self, epoch: int):
         # reset memories and board states
         self.memories *= 0
@@ -115,11 +130,13 @@ class T3DQLDataset(Dataset):
             ratio = 1 - (epoch / max_epochs)
             self.exp_rate_range[1] = min(self.exp_rate_range[1], ratio)
             self.exploration_decay = 1 / self.exploration_decay
+            print(f"min threshold: {self.exp_rate_range}")
 
         if self.exploration_rate > self.exp_rate_range[1]:
             ratio = (epoch / max_epochs)
             self.exp_rate_range[0] = min(self.exp_rate_range[0], ratio)
             self.exploration_decay = 1 / self.exploration_decay
+            print(f"max threshold: {self.exp_rate_range}")
 
         files_to_scan = self.__scan_dir()
         for filename in files_to_scan:
@@ -128,7 +145,9 @@ class T3DQLDataset(Dataset):
                 history = parsed_json["history"]
                 max_actions = len(history)
                 winner = parsed_json["winner"] if "winner" in parsed_json else None
-                self.__calculate_session_stats(winner, parsed_json["status"])
+
+                # self.__calculate_session_stats(winner, parsed_json["status"])
+                self.__calculate_session_stats_for_player(agent_player_id, winner, parsed_json["status"], filename)
 
                 for act_idx, action in enumerate(history):
                     curr_choice = action["choice"]
@@ -160,9 +179,9 @@ class T3DQLDataset(Dataset):
 
     def post_step(self):
         if self.delete_training_files:
-            files_to_delete = []
+            """            
             files_to_keep = []
-
+            
             # Collect all files that match the pattern
             for dir_path, dir_names, filenames in os.walk(self.root_dir):
                 for filename in filenames:
@@ -182,6 +201,18 @@ class T3DQLDataset(Dataset):
                     os.remove(filename)
                 except Exception as e:
                     print(f"Error deleting file {filename}: {e}")
+            """
+        files_to_delete, _ = sample_dist(retain_dist=experience_retain_dist,
+                                       retain_ratio=experience_replay,
+                                       data=self.stats["sessions"],
+                                       total=max_sessions,
+                                       rng_seed=42)
+
+        for filename in files_to_delete:
+            try:
+                os.remove(filename)
+            except Exception as e:
+                print(f"Error deleting file {filename}: {e}")
 
 
     def __scan_dir(self):
@@ -255,6 +286,7 @@ if __name__ == "__main__":
     exploration_decay = init_config.get("exploration_decay",0.9)
     policy_sync_rate = init_config.get("policy_sync_rate",10)
     experience_replay = init_config.get("experience_replay",0.5)
+    experience_retain_dist = init_config.get("experience_retain_dist",[0.8, 0.1, 0.1])
 
     min_lr, max_lr = learn_rate_range
     # exp_rate_range = [0.01, 1.0]  # [min_value, max_value]
@@ -320,8 +352,8 @@ if __name__ == "__main__":
         dataset.pre_step(epoch)
 
         tb_log.add_scalars('Stats', {
-            'P1 Wins': dataset.stats["p1_wins"],
-            'P2 Wins': dataset.stats["p2_wins"],
+            'Wins': dataset.stats["wins"],
+            'Losses': dataset.stats["losses"],
             'Draws': dataset.stats["draws"]
         }, epoch)
 
@@ -377,6 +409,8 @@ if __name__ == "__main__":
 
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
+        tb_log.add_scalar('Exp Rate/train', dataset.exploration_rate, epoch)
+        tb_log.add_scalar('Learn Rate/train', scheduler.get_last_lr(), epoch)
         print(f"epoch: {epoch} loss: {avg_loss}, learn_rate: {scheduler.get_last_lr()[0]:.2e}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
