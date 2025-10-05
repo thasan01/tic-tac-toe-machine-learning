@@ -87,7 +87,7 @@ class T3DQLDataset(Dataset):
 
     def __reset_stats(self):
         # self.stats = {"p1_wins": 0, "p2_wins": 0, "draws": 0, "p1_dqs": 0, "p2_dqs": 0}
-        self.stats = {"wins": 0, ";losses": 0, "draws": 0, "sessions": [[],[],[]]}
+        self.stats = {"wins": 0, "losses": 0, "draws": 0, "sessions": [[],[],[]]}
 
     def __calculate_session_stats(self, winner, status_msg):
         if winner is None:
