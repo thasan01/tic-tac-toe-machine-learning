@@ -43,15 +43,12 @@ def request_shutdown(base_url: str):
     requests.post(api_url)
 
 
-def run_games(epoch, session_template, max_sessions, exploration_rate):
-    global agent_player_id
+def run_games(epoch, session_template, max_sessions, exploration_rate, player_id, swap_players):
     players = [p1_profile, p2_profile]
-
-    if swap_players and epoch % 2 == 0:
-        players = [p2_profile, p1_profile]
+    curr_player_id = player_id
 
     for i in range(max_sessions):
-        session = session_template.format(epoch, i)
+        session = session_template.format(epoch, i, curr_player_id)
 
         subprocess.run(
             "node ./game/build/tic-tac-toe.console.js {} {} --outdir {} --suppressOutput --sessionName {} --encoder OneHotEncoder --explorationRate {}".format(
@@ -61,8 +58,9 @@ def run_games(epoch, session_template, max_sessions, exploration_rate):
             text=True
         )
 
-    if swap_players:
-        agent_player_id = (agent_player_id % 2) + 1
+        if swap_players:
+            players[0], players[1] = players[1], players[0]
+            curr_player_id = (curr_player_id % 2) + 1
 
 
 def onehot_encode_state(action, player_id:int):
@@ -89,21 +87,7 @@ class T3DQLDataset(Dataset):
         # self.stats = {"p1_wins": 0, "p2_wins": 0, "draws": 0, "p1_dqs": 0, "p2_dqs": 0}
         self.stats = {"wins": 0, "losses": 0, "draws": 0, "sessions": [[],[],[]]}
 
-    def __calculate_session_stats(self, winner, status_msg):
-        if winner is None:
-            if "draw" in status_msg:
-                self.stats["draws"] += 1
-            elif status_msg == "Player1 disqualified!":
-                self.stats["p1_dqs"] += 1
-            elif status_msg == "Player2 disqualified!":
-                self.stats["p2_dqs"] += 1
-        elif winner == 1:
-            self.stats["p1_wins"] += 1
-        elif winner == 2:
-            self.stats["p2_wins"] += 1
-        return
-
-    def __calculate_session_stats_for_player(self, player_id, winner, status_msg, filename):
+    def __calculate_session_stats(self, player_id, winner, status_msg, filename):
         if winner is None:
             if "draw" in status_msg:
                 self.stats["draws"] += 1
@@ -123,20 +107,19 @@ class T3DQLDataset(Dataset):
         self.board_states = []
         self.__reset_stats()
 
-        run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate)
+        current_player = agent_player_id
+        run_games(epoch, session_template, self.new_sessions, exploration_rate=self.exploration_rate, player_id=agent_player_id, swap_players=swap_players)
         self.exploration_rate *= self.exploration_decay
 
         if self.exploration_rate < self.exp_rate_range[0]:
             ratio = 1 - (epoch / max_epochs)
             self.exp_rate_range[1] = min(self.exp_rate_range[1], ratio)
             self.exploration_decay = 1 / self.exploration_decay
-            print(f"min threshold: {self.exp_rate_range}")
 
         if self.exploration_rate > self.exp_rate_range[1]:
             ratio = (epoch / max_epochs)
             self.exp_rate_range[0] = min(self.exp_rate_range[0], ratio)
             self.exploration_decay = 1 / self.exploration_decay
-            print(f"max threshold: {self.exp_rate_range}")
 
         files_to_scan = self.__scan_dir()
         for filename in files_to_scan:
@@ -146,14 +129,16 @@ class T3DQLDataset(Dataset):
                 max_actions = len(history)
                 winner = parsed_json["winner"] if "winner" in parsed_json else None
 
-                # self.__calculate_session_stats(winner, parsed_json["status"])
-                self.__calculate_session_stats_for_player(agent_player_id, winner, parsed_json["status"], filename)
+                if swap_players:
+                    current_player = int(filename.split('-')[-1].split('.')[0])
+                    
+                self.__calculate_session_stats(current_player, winner, parsed_json["status"], filename)
 
                 for act_idx, action in enumerate(history):
                     curr_choice = action["choice"]
                     is_game_end = (act_idx == max_actions - 1)
 
-                    curr_state = torch.tensor(onehot_encode_state(action, agent_player_id))
+                    curr_state = torch.tensor(onehot_encode_state(action, current_player))
                     curr_state_idx = len(self.board_states)
 
                     # If it's the last action, there is no next state.
@@ -179,40 +164,17 @@ class T3DQLDataset(Dataset):
 
     def post_step(self):
         if self.delete_training_files:
-            """            
-            files_to_keep = []
-            
-            # Collect all files that match the pattern
-            for dir_path, dir_names, filenames in os.walk(self.root_dir):
-                for filename in filenames:
-                    if self.file_pattern.match(filename):
-                        files_to_keep.append(os.path.join(dir_path, filename))
-
-            # Calculate the number of files to delete based on experience_replay
-            total_files = len(files_to_keep)
-            keep_count = int(total_files * self.experience_replay)
-            delete_count = total_files - keep_count
-
-            # Randomly select files to delete
-            files_to_delete = random.sample(files_to_keep, delete_count)
+            files_to_delete, _ = sample_dist(retain_dist=experience_retain_dist,
+                                           retain_ratio=experience_replay,
+                                           data=self.stats["sessions"],
+                                           total=max_sessions,
+                                           rng_seed=42)
 
             for filename in files_to_delete:
                 try:
                     os.remove(filename)
                 except Exception as e:
                     print(f"Error deleting file {filename}: {e}")
-            """
-        files_to_delete, _ = sample_dist(retain_dist=experience_retain_dist,
-                                       retain_ratio=experience_replay,
-                                       data=self.stats["sessions"],
-                                       total=max_sessions,
-                                       rng_seed=42)
-
-        for filename in files_to_delete:
-            try:
-                os.remove(filename)
-            except Exception as e:
-                print(f"Error deleting file {filename}: {e}")
 
 
     def __scan_dir(self):
@@ -277,7 +239,7 @@ if __name__ == "__main__":
     swap_players = init_config.get("swap_players", False)
     archive_rate = init_config.get("archive_rate", 5)
 
-    session_template = init_config.get("session_template","training-{:06d}-{:06d}")
+    session_template = init_config.get("session_template","training-{:06d}-{:06d}-{:01d}")
     good_move_score = init_config.get("good_move_score",1)
     invalid_move_score = init_config.get("invalid_move_score",-10)
     default_move_score = init_config.get("default_move_score",-0.1)
@@ -335,7 +297,7 @@ if __name__ == "__main__":
     tb_log = SummaryWriter(logs_dir)
 
     # create the initial half sessions
-    run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate)
+    run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate, player_id=agent_player_id, swap_players=swap_players)
 
     scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=min_lr, max_lr=max_lr, mode='triangular2', step_size_up= learn_step_size, last_epoch=learn_step_size - 1)
     if "scheduler_state" in t3config:

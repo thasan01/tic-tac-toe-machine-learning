@@ -19,7 +19,7 @@
     "archive_rate": 5,
 
 
-    "session_template": "training-{:06d}-{:06d}",
+    "session_template": "training-{:06d}-{:06d}-{:01d}",
     "good_move_score": 1,
     "invalid_move_score": -1,
     "default_move_score": -0.01,
