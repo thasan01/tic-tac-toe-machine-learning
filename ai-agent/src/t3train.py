@@ -411,7 +411,7 @@ if __name__ == "__main__":
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
         tb_log.add_scalar('Exp Rate/train', dataset.exploration_rate, epoch)
         tb_log.add_scalar('Learn Rate/train', scheduler.get_last_lr()[0], epoch)
-        print(f"epoch: {epoch} loss: {avg_loss}, learn_rate: {scheduler.get_last_lr()[0]:.2e}, exp_rate: {dataset.exploration_rate}, p1_wins: {dataset.stats["p1_wins"]}, p2_wins: {dataset.stats["p2_wins"]}, draws: {dataset.stats["draws"]}")
+        print(f"epoch: {epoch} loss: {avg_loss}, learn_rate: {scheduler.get_last_lr()[0]:.2e}, exp_rate: {dataset.exploration_rate}, wins: {dataset.stats["wins"]}, losses: {dataset.stats["losses"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
