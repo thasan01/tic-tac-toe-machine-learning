@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import os
 import os.path as path
-from randomutil import Random
+from src.randomutil import Random
 
 DEFAULT_MODEL_FILENAME = "t3-model.pth"
 DEFAULT_TRAINING_FILENAME = "t3-training.pth"

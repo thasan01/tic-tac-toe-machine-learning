@@ -1,7 +1,7 @@
 import threading
 from flask import Flask, request
 import src.model.t3dqn as t3
-from t3encoder import encode
+from src.t3encoder import encode
 import logging
 
 log = logging.getLogger(__name__)
