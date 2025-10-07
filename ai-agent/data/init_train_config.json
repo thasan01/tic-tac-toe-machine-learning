@@ -29,5 +29,7 @@
     "swap_players": false,
     "agent_player_id": 2,
     "exploration_rate": 1.0,
-    "exploration_decay": 0.99
+    "exploration_decay": 0.99,
+    
+    "eval_rate": 10
 }
