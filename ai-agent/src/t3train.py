@@ -105,7 +105,7 @@ def eval_model(epoch):
                     calculate_session_stats(eval_stats, current_player, winner, parsed_json["status"], filename)
                 os.remove(file_path)
 
-    print(f"EVAL epoch: {epoch} wins: {dataset.stats["wins"]}, losses: {dataset.stats["losses"]}, draws: {dataset.stats["draws"]}")
+    print(f"EVAL epoch: {epoch} wins: {eval_stats["wins"]}, losses: {eval_stats["losses"]}, draws: {eval_stats["draws"]}")
 
 class T3DQLDataset(Dataset):
     def __init__(self, root_dir: str, file_expression: str = ".*", delete_training_files=True, exploration_rate=0.0, exploration_decay = 0.0, experience_replay = 0.5):
@@ -398,7 +398,7 @@ if __name__ == "__main__":
         tb_log.add_scalar('Loss/train', avg_loss, epoch)
         tb_log.add_scalar('Exp Rate/train', dataset.exploration_rate, epoch)
         tb_log.add_scalar('Learn Rate/train', scheduler.get_last_lr()[0], epoch)
-        print(f"TRAINING epoch: {epoch} loss: {avg_loss}, learn_rate: {scheduler.get_last_lr()[0]:.2e}, exp_rate: {dataset.exploration_rate}, wins: {dataset.stats["wins"]}, losses: {dataset.stats["losses"]}, draws: {dataset.stats["draws"]}")
+        #print(f"TRAINING epoch: {epoch} loss: {avg_loss}, learn_rate: {scheduler.get_last_lr()[0]:.2e}, exp_rate: {dataset.exploration_rate}, wins: {dataset.stats["wins"]}, losses: {dataset.stats["losses"]}, draws: {dataset.stats["draws"]}")
 
         dataset.post_step()
 
