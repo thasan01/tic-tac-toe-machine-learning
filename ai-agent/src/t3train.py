@@ -88,11 +88,11 @@ def onehot_encode_state(action, player_id:int):
 def eval_model(epoch):
     global data_dir
     eval_template = "eval-{:06d}-{:06d}-{:01d}"
-    run_games(epoch, eval_template, max_sessions//2, 0, 1, False)
-    run_games(epoch, eval_template, max_sessions//2, 0, 2, False)
+    #run_games(epoch, eval_template, max_sessions//2, 0, 1, False)
+    run_games(epoch, eval_template, max_sessions, 0, 2, False)
 
     eval_stats = {"wins": 0, "losses": 0, "draws": 0, "sessions": [[], [], []]}
-    file_pattern = re.compile("training-(.*).txt")
+    file_pattern = re.compile("eval-(.*).txt")
 
     for root, _, files in os.walk(data_dir):
         for filename in files:
