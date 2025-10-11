@@ -3,6 +3,7 @@ from flask import Flask, request
 import src.model.t3dqn as t3
 from src.t3encoder import encode
 import logging
+import torch
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -13,14 +14,18 @@ flask_log.setLevel(logging.ERROR)
 app = Flask(__name__)  # Flask constructor
 shutdown_event = threading.Event()
 agent = None
-model_dir = None
 
 class Agent:
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, model_dir: str, num_input_nodes: int, num_hidden_layer_nodes: int, num_output_nodes: int):
+        self.model_dir = model_dir
+        self.num_input_nodes = num_input_nodes
+        self.num_hidden_layer_nodes = num_hidden_layer_nodes
+        self.num_output_nodes = num_output_nodes
+        self.model = None
+        self.reload()
 
-    def reload(self, model_dir:str):
-        self.model, _ = t3.load_model(model_dir, is_inference=True)
+    def reload(self):
+        self.model, _ = t3.load_model(self.model_dir, num_input_nodes=self.num_input_nodes, num_hidden_layer_nodes=self.num_hidden_layer_nodes, num_output_nodes=self.num_output_nodes, is_inference=True)
         self.model.eval()
 
     def decide(self, state, exploration_rate, options):
@@ -36,7 +41,7 @@ def ping():
 
 @app.route('/model/reload', methods=['POST'])
 def reload_model():
-    agent.reload(model_dir)
+    agent.reload()
     return {"message": "Reloaded model"}
 
 
@@ -62,9 +67,16 @@ def shutdown():
     return {"status": "Server is shutting down."}
 
 if __name__ == '__main__':
+    num_input_nodes = 30
+    num_hidden_layer_nodes = [64, 128, 256, 128, 64]
+    num_output_nodes = 9
+    relu_rate = 0.1
+    dropout_rate = 0.1
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
     model_dir = "./data/model/t3"
-    agent = Agent(model_dir)
-    agent.reload(model_dir)
+    agent = Agent(model_dir, num_input_nodes, num_hidden_layer_nodes, num_output_nodes)
+    agent.reload()
 
     server_hostname = '127.0.0.1'
     server_port = 5000
