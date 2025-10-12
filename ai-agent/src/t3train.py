@@ -174,7 +174,7 @@ class T3DQLDataset(Dataset):
                         # Reward for the final move is based on the game's outcome
                         if winner == 0:  # Draw
                             reward = 0
-                        elif agent_player_id == winner:
+                        elif current_player == winner:
                             reward = good_move_score  # Win
                         else:
                             reward = -good_move_score  # Loss
