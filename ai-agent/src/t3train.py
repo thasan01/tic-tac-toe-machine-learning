@@ -320,7 +320,7 @@ if __name__ == "__main__":
     # create the initial half sessions
     run_games(-1, session_template, int(max_sessions * experience_replay), exploration_rate=exploration_rate, player_id=agent_player_id, swap_players=swap_players)
 
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=min_lr, max_lr=max_lr, mode='triangular2', step_size_up= learn_step_size, last_epoch=learn_step_size - 1)
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=min_lr, max_lr=max_lr, mode='triangular2', step_size_up=learn_step_size) #last_epoch=learn_step_size - 1 use this arg to swap order
     if "scheduler_state" in t3config:
         scheduler.load_state_dict(t3config["scheduler_state"])
 
