@@ -82,7 +82,7 @@ def calculate_session_stats(stats, player_id, winner, status_msg, filename):
 
 def onehot_encode_state(action, player_id:int):
     onehot_player = [0, 0, 0]
-    onehot_player[agent_player_id] = 1
+    onehot_player[player_id] = 1
     return action["board"] + onehot_player
 
 def eval_model(epoch):
