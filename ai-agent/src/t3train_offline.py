@@ -86,11 +86,11 @@ def archive_func_generator(src_dir, dest_dir):
         return lambda src, dest: None
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         print("Script is missing required input args")
         sys.exit(1)
 
-    _, model_dir, data_dir, archive_dir, init_config_filename = sys.argv[:4]
+    _, model_dir, data_dir, archive_dir, init_config_filename = sys.argv[:5]
 
     with open(init_config_filename) as file:
         init_config = json.load(file)
