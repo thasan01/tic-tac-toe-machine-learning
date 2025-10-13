@@ -59,7 +59,7 @@ class T3DQLDataset(Dataset):
 
                     self.board_states.append(curr_state)
                     self.memories.append([curr_state_idx, next_state_idx, curr_choice, reward, is_game_end])
-                    
+
         if len(self.board_states) > 0:
             self.board_states = torch.stack(self.board_states).float().to(device)
 
@@ -191,5 +191,5 @@ if __name__ == "__main__":
 
     if avg_loss:
         t3target_dqn.load_state_dict(t3policy_dqn.state_dict())
-        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss, exploration_rate=dataset.exploration_rate, exploration_decay=dataset.exploration_decay, experience_replay=experience_replay, scheduler_state=scheduler.state_dict())
+        save_model_checkpoint(model_dir, t3policy_dqn, optimizer_state=optimizer.state_dict(), epoch=max_epochs, loss=avg_loss,  scheduler_state=scheduler.state_dict())
         archive_model(model_dir, archive_dir)
