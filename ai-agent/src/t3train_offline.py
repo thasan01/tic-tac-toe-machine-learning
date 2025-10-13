@@ -59,6 +59,9 @@ class T3DQLDataset(Dataset):
 
                     self.board_states.append(curr_state)
                     self.memories.append([curr_state_idx, next_state_idx, curr_choice, reward, is_game_end])
+                    
+        if len(self.board_states) > 0:
+            self.board_states = torch.stack(self.board_states).float().to(device)
 
 
     def post_step(self):
