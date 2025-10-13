@@ -124,7 +124,7 @@ if __name__ == "__main__":
                            dropout_rate=dropout_rate).to(device)
     t3target_dqn.eval()
 
-    dataset = T3DQLDataset(data_dir, file_expression = ".*")
+    dataset = T3DQLDataset(data_dir, file_expression = "training-(.*).txt")
     loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=True, drop_last=True)
     loss_fn = torch.nn.SmoothL1Loss() # torch.nn.MSELoss()
     optimizer = optim.Adam(t3policy_dqn.parameters(), lr=max_lr)
