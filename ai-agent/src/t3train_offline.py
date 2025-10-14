@@ -181,8 +181,8 @@ if __name__ == "__main__":
             loss.backward()
             torch.nn.utils.clip_grad_value_(t3policy_dqn.parameters(), 100)
             optimizer.step()
+            scheduler.step()
 
-        scheduler.step()
         avg_loss = total_loss / num_batches if num_batches > 0 else -1
         current_learn_rate = scheduler.get_last_lr()[0]
         print(f"TRAINING epoch: {epoch} loss: {avg_loss}, learn_rate: {current_learn_rate:.2e}")
