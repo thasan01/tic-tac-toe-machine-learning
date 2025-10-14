@@ -131,7 +131,7 @@ if __name__ == "__main__":
     loader = DataLoader(dataset, batch_size=batch_size, num_workers=0, shuffle=True, drop_last=True)
     loss_fn = torch.nn.SmoothL1Loss() # torch.nn.MSELoss()
     optimizer = optim.Adam(t3policy_dqn.parameters(), lr=max_lr)
-    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=min_lr, max_lr=max_lr, mode='triangular2', gamma=0.9, cycle_momentum=False, step_size_up=learn_step_size) # last_epoch=learn_step_size - 1, uncomment to swap order
+    scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=min_lr, max_lr=max_lr, mode='triangular2', gamma=0.9, cycle_momentum=False, step_size_up=learn_step_size, step_size_down=learn_step_size) # last_epoch=learn_step_size - 1, uncomment to swap order 
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = min_lr  # force start at the bottom of the cycle
