@@ -94,6 +94,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     _, model_dir, data_dir, archive_dir, init_config_filename = sys.argv[:5]
+    exit_file = os.path.join(model_dir, ".exit")
 
     with open(init_config_filename) as file:
         init_config = json.load(file)
@@ -143,6 +144,11 @@ if __name__ == "__main__":
 
     dataset.pre_step(0)
     for epoch in range(initial_epoch, max_epochs):
+
+        if os.path.exists(exit_file):
+            print("Exiting training.")
+            break
+
         for i, batch in enumerate(loader):
             curr_state_idx, next_state_idx, curr_choice, reward, is_game_end = batch
 
