@@ -1,5 +1,5 @@
 const renderer = require("./renderer/console-renderer");
-const game = require("./game");
+const { game, gameBatch } = require("./game");
 const states = require("./states/game-states");
 const { save } = require("./states/save-result");
 
@@ -40,49 +40,65 @@ function loadPlayer(type, args, playerId) {
   return new Player(args, playerId);
 }
 
-let init = {
-  logic: async ({ session }) => {
-    return new Promise(async (resolve, reject) => {
-      session.board = new Array(9).fill(0);
-      let { players } = session;
-      let {
-        player1Type,
-        player2Type,
-        sessionName,
-        outdir,
-        suppressOutput,
-        invalidChoiceThreshold = 5,
-        sameInvalidChoiceThreshold = 2,
-      } = inputArgs;
+function makeInit(params) {
+  return {
+    logic: async ({ session }) => {
+      return new Promise(async (resolve, reject) => {
+        session.board = new Array(9).fill(0);
+        let { players } = session;
+        let {
+          player1Type,
+          player2Type,
+          sessionName,
+          outdir,
+          suppressOutput,
+          invalidChoiceThreshold = 5,
+          sameInvalidChoiceThreshold = 2,
+        } = params;
 
-      try {
-        players.push(loadPlayer(player1Type, inputArgs, 1));
-        players.push(loadPlayer(player2Type, inputArgs, 2));
+        try {
+          players.push(loadPlayer(player1Type, params, 1));
+          players.push(loadPlayer(player2Type, params, 2));
 
-        players[0].register();
-        players[1].register();
+          await players[0].register();
+          await players[1].register();
 
-        session.sessionName = sessionName;
-        session.outdir = outdir;
-        session.activePlayer = 0;
-        session.suppressOutput = suppressOutput;
-        session.invalidChoiceThreshold = invalidChoiceThreshold;
-        session.sameInvalidChoiceThreshold = sameInvalidChoiceThreshold;
+          session.sessionName = sessionName;
+          session.outdir = outdir;
+          session.activePlayer = 0;
+          session.suppressOutput = suppressOutput;
+          session.invalidChoiceThreshold = invalidChoiceThreshold;
+          session.sameInvalidChoiceThreshold = sameInvalidChoiceThreshold;
 
-        resolve();
-      } catch (err) {
-        reject(err);
-      }
-    });
-  },
+          resolve();
+        } catch (err) {
+          reject(err);
+        }
+      });
+    },
+    transitions: { turn: () => true },
+  };
+}
 
-  transitions: { turn: () => true },
-};
-
-states["init"] = init;
 states["save"] = save;
-
 delete states["turn"].transitions["end"];
 states["turn"].transitions["save"] = ({ gameover }) => gameover;
 
-game({ renderer, encoder, states, initialState: "init" });
+const numSessions = parseInt(inputArgs.sessions, 10) || 1;
+const concurrency = parseInt(inputArgs.concurrency, 10) || Infinity;
+
+if (numSessions <= 1) {
+  const singleStates = { ...states, init: makeInit(inputArgs) };
+  game({ renderer, encoder, states: singleStates, initialState: "init" });
+} else {
+  const configs = Array.from({ length: numSessions }, (_, i) => {
+    const sessionName = `${inputArgs.sessionName}-${String(i).padStart(6, "0")}`;
+    const sessionParams = { ...inputArgs, sessionName };
+    const sessionStates = { ...states, init: makeInit(sessionParams) };
+    return { renderer, encoder, states: sessionStates, initialState: "init" };
+  });
+  gameBatch(configs, { concurrency }).catch((err) => {
+    console.error("Batch game error:", err);
+    process.exit(1);
+  });
+}

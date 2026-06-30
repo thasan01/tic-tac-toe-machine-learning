@@ -28,6 +28,16 @@ For an AI agent vs Human player:
 node ./game/build/tic-tac-toe.console.js --player1Type RLWebAgentPlayer --player1Profile rl-agent-1 --explorationRate 0.0 --player2Type HumanConsolePlayer --sessionName game1 --configDir game/config
 ```
 
+### Batch Sessions
+
+The console game supports running multiple sessions in a single process invocation. This is useful for model training where many games need to be played per epoch. Pass `--sessions N` to run N games concurrently. Session output files are named `${sessionName}-000000.txt` through `${sessionName}-000099.txt`.
+
+```
+node ./game/build/tic-tac-toe.console.js --player1Type RLWebAgentPlayer --player1Profile rl-agent-1 --explorationRate 0.25 --player2Type RandomPlayer --sessionName training-000001 --sessions 100 --outdir game/build --configDir game/config --suppressOutput
+```
+
+API calls to the AI model server are automatically queued across all concurrent sessions, so the model server only processes one request at a time regardless of how many sessions are running.
+
 
 ## Input Arguments
 
@@ -116,6 +126,20 @@ Following are list of input arguments can be passed into the game.
     <td>This rate is used by the RLWebAgentPlayer during the prediction step. It controls the logic for the agent use the neural network to predict a choice (exploitation) or randomly select a choice (exploration). The higher the number, the more likely the agent will use exploration. If no value is provided the agent will fall back to the default value of 0.</td>
     <td>No</td>
     <td>Real number between 0 and 1</td>          
+  </tr>
+
+  <tr>
+    <td>sessions</td>
+    <td>Number of game sessions to run concurrently in a single process. When greater than 1, session output files are named <code>${sessionName}-000000.txt</code> through <code>${sessionName}-000N.txt</code>. API calls to the model server are queued so only one request is in-flight at a time. If not provided, defaults to 1 (single-game mode).</td>
+    <td>No</td>
+    <td>Integer</td>
+  </tr>
+
+  <tr>
+    <td>concurrency</td>
+    <td>Maximum number of game sessions that run simultaneously when using batch mode (<code>--sessions N</code>). Useful for throttling CPU or memory usage. If not provided, all sessions run in parallel.</td>
+    <td>No</td>
+    <td>Integer</td>
   </tr>
 
 

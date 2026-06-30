@@ -25,26 +25,51 @@ let game = async ({
     history: [],
   };
 
+  let fatalError = false;
+
   while (currentState.transitions) {
     let promise = currentState.logic({ renderer, encoder, session });
     let newState = null;
+    let breakLoop = false;
 
     await promise
-      .then((resp) => {
-        let trans = currentState.transitions;
-        newState = processTransitions(trans, session);
+      .then(() => {
+        newState = processTransitions(currentState.transitions, session);
       })
-      .catch((resp) => {
-        console.log("Encountered Error: ", resp);
+      .catch((err) => {
+        console.error(err instanceof Error ? err.message : String(err));
+        fatalError = true;
       })
       .finally(() => {
         if (newState != null) currentState = states[newState];
-        //Current State has transitions defined but none of them were acivated,
-        //so setting transitions to null to break out of the loop.
-        else currentState.transitions = null;
+        else breakLoop = true;
       });
+
+    if (breakLoop) break;
   }
-  currentState.logic({ renderer, encoder, session });
+
+  if (!fatalError) {
+    currentState.logic({ renderer, encoder, session });
+  }
 };
 
-module.exports = game;
+async function gameBatch(configs, { concurrency = Infinity } = {}) {
+  if (concurrency === Infinity || concurrency >= configs.length) {
+    return Promise.all(configs.map((cfg) => game(cfg)));
+  }
+
+  const results = new Array(configs.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < configs.length) {
+      const i = nextIndex++;
+      results[i] = await game(configs[i]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, worker));
+  return results;
+}
+
+module.exports = { game, gameBatch };

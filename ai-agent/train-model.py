@@ -60,23 +60,23 @@ def reload_model(base_url):
 
 
 def run_games(epoch, out_dir, exploration_rate):
-    for i in range(max_sessions):
-        session = session_template.format(epoch, i)
-        subprocess.run(["node", "../game/build/tic-tac-toe.console.js",
-                        # "--player1Type", "RandomPlayer",
-                        "--player1Type", "RLWebAgentPlayer",
-                        # "--player2Type", "RLWebAgentPlayer",
-                        "--player2Type", "RandomPlayer",
-                        "--player1Profile", "rl-agent-1",
-                        # "--player2Profile", "rl-agent-1",
-                        "--trueRandomRate", "0.0",
-                        "--suppressOutput",
-                        "--configDir", "../game/config",
-                        "--outdir", out_dir,
-                        "--sessionName", session,
-                        "--encoder", "OneHotEncoder",
-                        "--explorationRate", f"{exploration_rate}"
-                        ])
+    base_session = f"training-{epoch:06d}"
+    subprocess.run(["node", "../game/build/tic-tac-toe.console.js",
+                    # "--player1Type", "RandomPlayer",
+                    "--player1Type", "RLWebAgentPlayer",
+                    # "--player2Type", "RLWebAgentPlayer",
+                    "--player2Type", "RandomPlayer",
+                    "--player1Profile", "rl-agent-1",
+                    # "--player2Profile", "rl-agent-1",
+                    "--trueRandomRate", "0.0",
+                    "--suppressOutput",
+                    "--configDir", "../game/config",
+                    "--outdir", out_dir,
+                    "--sessionName", base_session,
+                    "--sessions", str(max_sessions),
+                    "--encoder", "OneHotEncoder",
+                    "--explorationRate", f"{exploration_rate}"
+                    ])
 
 
 def calculate_session_stats(stats, winner, status_msg):
