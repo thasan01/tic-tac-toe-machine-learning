@@ -1,3 +1,5 @@
+// Entry point for the CLI game. Parses arguments, wires up players and states,
+// then launches either a single game or a concurrent batch of games.
 const renderer = require("./renderer/console-renderer");
 const { game, gameBatch } = require("./game");
 const states = require("./states/game-states");
@@ -15,6 +17,7 @@ switch (argv.encoder) {
     break;
 }
 
+// Config file values act as defaults; CLI args override them.
 let config = {};
 if (argv.configDir) {
   process.env["NODE_CONFIG_DIR"] = argv.configDir;
@@ -40,6 +43,9 @@ function loadPlayer(type, args, playerId) {
   return new Player(args, playerId);
 }
 
+// Returns a fresh init state object bound to the given session parameters.
+// Called once per session so that batch runs each get their own players,
+// sessionName, and board — rather than all sessions sharing a single closure.
 function makeInit(params) {
   return {
     logic: async ({ session }) => {
@@ -60,6 +66,7 @@ function makeInit(params) {
           players.push(loadPlayer(player1Type, params, 1));
           players.push(loadPlayer(player2Type, params, 2));
 
+          // register() pings the model server; throws ServerConnectionError if unreachable.
           await players[0].register();
           await players[1].register();
 
@@ -80,6 +87,9 @@ function makeInit(params) {
   };
 }
 
+// Redirect the end-of-game path through the save state so results are
+// written to disk before the final board render. The original turn→end
+// shortcut is removed so every completed game passes through save first.
 states["save"] = save;
 delete states["turn"].transitions["end"];
 states["turn"].transitions["save"] = ({ gameover }) => gameover;
@@ -91,6 +101,9 @@ if (numSessions <= 1) {
   const singleStates = { ...states, init: makeInit(inputArgs) };
   game({ renderer, encoder, states: singleStates, initialState: "init" });
 } else {
+  // Batch mode: run N sessions concurrently. Each gets a suffixed sessionName
+  // (e.g. training-000001-000000 through training-000001-000099) and its own
+  // init state, but shares the stateless turn/save/end objects safely.
   const configs = Array.from({ length: numSessions }, (_, i) => {
     const sessionName = `${inputArgs.sessionName}-${String(i).padStart(6, "0")}`;
     const sessionParams = { ...inputArgs, sessionName };

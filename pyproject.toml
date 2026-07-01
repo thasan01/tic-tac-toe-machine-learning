@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tic-tac-toe-machine-learning"
+version = "0.1.0"
+description = "A machine learning project for Tic-Tac-Toe"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+# Core standard dependencies that run on any system
+dependencies = [
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+# Setup for NVIDIA GPU acceleration
+cuda = [
+    "torch==2.4.1",
+    "torchvision==0.19.1",
+]
+
+# Setup for AMD/Intel/Native Windows GPU acceleration
+directml = [
+    "torch==2.4.1",
+    "torchvision==0.19.1",
+    "torch-directml",
+]

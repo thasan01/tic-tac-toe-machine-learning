@@ -4,36 +4,29 @@ import torch.nn.functional as F
 import os
 import time
 import zipfile
-from randomutil import Random
+from utils.random_util import Random
 
 output_space = set(range(9))
 
 
 # Tic-Tac-Toe Deep Q Network Model
 class Model(nn.Module):
-    def __init__(self, input_nodes, hidden_layer1_nodes, output_nodes, random=Random()):
+    def __init__(self, input_nodes, layer_sizes, output_nodes, dropout=0.1, random=Random()):
         super(Model, self).__init__()
         self.output_nodes = output_nodes
-        # fully connected network
-        self.fc1 = nn.Linear(input_nodes, hidden_layer1_nodes)
-        self.fc2 = nn.Linear(hidden_layer1_nodes, hidden_layer1_nodes*7)
-        self.fc3 = nn.Linear(hidden_layer1_nodes*7, hidden_layer1_nodes)
-        self.out = nn.Linear(hidden_layer1_nodes, output_nodes)
-        self.dropout1 = nn.Dropout(0.1)
+        sizes = [input_nodes] + layer_sizes + [output_nodes]
+        self.fc_layers = nn.ModuleList([
+            nn.Linear(sizes[i], sizes[i + 1]) for i in range(len(sizes) - 1)
+        ])
+        self.dropout = nn.Dropout(dropout)
         self.leakyReLU = nn.LeakyReLU(0.1)
-        self.sigmoid = nn.Sigmoid()
         self.random = random
 
     def forward(self, x):
-        # Apply rectified linear unit (ReLU) activation
-        x = self.leakyReLU(self.fc1(x))
-        x = self.dropout1(x)
-        x = self.leakyReLU(self.fc2(x))
-        x = self.dropout1(x)
-        x = self.leakyReLU(self.fc3(x))
-        x = self.dropout1(x)
-        # x = self.sigmoid(self.out(x))  # Calculate output
-        x = self.out(x)
+        for layer in self.fc_layers[:-1]:
+            x = self.leakyReLU(layer(x))
+            x = self.dropout(x)
+        x = self.fc_layers[-1](x)
         return x
 
     def predict(self, state, exploration_rate, options=None):
@@ -57,12 +50,12 @@ def get_model(filename=None, input_args=None):
     if input_args is None:
         input_args = {}
 
-    default_args = {"input_nodes": 30, "hidden_layer1_nodes": 120, "output_nodes": 9}
+    default_args = {"input_nodes": 30, "layer_sizes": [120, 840, 120], "output_nodes": 9}
     model_args = {**default_args, **input_args}
 
     if filename is not None:
         try:  # Attempt to load the model if it exists
-            model = torch.load(filename)
+            model = torch.load(filename, weights_only=False)
         except FileNotFoundError:
             # if it doesn't exist, then create  new one
             model = Model(**model_args)
