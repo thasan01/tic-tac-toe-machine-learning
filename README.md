@@ -2,6 +2,15 @@
 
 This repository contains Javascript implementation of Tic Tac Toe game that leverages a Python based of player agent.
 
+# Environment Setup
+First the python venv needs to be set up.
+
+Run the following command from the root, depending on the type of graphic card: cpu,cuda, directml
+```pip install -e .[directml]```
+
+To call a python file from root 
+```PYTHONPATH=ai-agent/src python ./ai-agent/src/train_offline.py```
+
 # The Game
 
 There are two types of games: web and console. The web game is not been implemented yet.
